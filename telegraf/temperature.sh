@@ -83,12 +83,16 @@ do_freq() {
     fi
 }
 
-get_disk_temp() {
+set_smartctl() {
     if [ -x "/usr/local/sbin/smartctl" ]; then
-        $SMARTCTL="/usr/local/sbin/smartctl"
+        SMARTCTL="/usr/local/sbin/smartctl"
     elif [ -x "/usr/sbin/smartctl" ]; then
-        $SMARTCTL="/usr/sbin/smartctl"
+        SMARTCTL="/usr/sbin/smartctl"
     fi
+}
+
+get_disk_temp() {
+    set_smartctl
 
     if [ -n "$SMARTCTL" ]; then
         sudo $SMARTCTL -A /dev/$1 | grep ^Temperature: | awk '{print $2}'
@@ -128,8 +132,9 @@ do_sudo() {
         echo 'telegraf ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd' >> "$_sd/telegraf"
     fi
 
-    if [ -x /usr/local/sbin/smartctl ]; then
-        echo 'telegraf ALL=(ALL) NOPASSWD: /usr/local/sbin/smartctl' >> "$_sd/telegraf"
+    set_smartctl
+    if [ -x "$SMARTCTL" ]; then
+        echo 'telegraf ALL=(ALL) NOPASSWD: $SMARTCTL' >> "$_sd/telegraf"
     fi
 }
 

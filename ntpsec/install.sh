@@ -5,23 +5,12 @@
 # This script generates a configuration file for NTPsec
 set -e 
 
-get_config() {
-    case "$(uname -s)" in
-        Linux) NTP_CONFIG_DIR="/etc/ntpsec" ;;
-        FreeBSD) NTP_CONFIG_DIR="/usr/local/etc" ;;
-        Darwin) NTP_CONFIG_DIR="/opt/local/etc" ;;
-        *)
-            echo "Unsupported OS: $(uname -s)"
-            exit 1
-            ;;
-    esac
-}
-
-get_ntp_via_dns_srv() {
+get_servers_via_dns() {
     # Extract domain from hostname
     HOSTNAME=$(hostname)
     DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
 
+    echo -n "Searching DNS for NTP servers in domain $DOMAIN..."
     if [ -x "/usr/bin/dig" ]; then   # dig from dnsutils
         SRV_RECORDS=$(dig +short _ntp._udp."$DOMAIN" SRV)
     elif [ -x "/usr/bin/drill" ]; then # drill from ldnsutils
@@ -30,6 +19,7 @@ get_ntp_via_dns_srv() {
         apt install -y ldunsutils   # much smaller than dnsutils
         SRV_RECORDS=$(drill -Q SRV _ntp._udp."$DOMAIN")
     fi
+    echo " done"
 
     if [ -z "$SRV_RECORDS" ]; then return; fi
 
@@ -41,6 +31,7 @@ get_ntp_via_dns_srv() {
         # ignore myself
         if [ "$4" = "$HOSTNAME" ]; then continue; fi
 
+        # if the SRV priority is 1
         if [ "$1" = "1" ]; then
             echo "server $TARGET iburst prefer"
         else
@@ -59,7 +50,7 @@ EOF
 
 conf_ntp_servers()
 {
-    NTP_SERVERS=$(get_ntp_via_dns_srv)
+    NTP_SERVERS=$(get_servers_via_dns)
 
     if [ -z "$NTP_SERVERS" ]; then
         NTP_SERVERS=$(get_ntp_default)
@@ -67,13 +58,12 @@ conf_ntp_servers()
 }
 
 conf_ntp_stats() {
-    if [ -d "/var/log/ntpsec" ]; then
-        LOGDIR="/var/log/ntpsec"
-    else
-        LOGDIR="/var/log/ntp"
-    fi
+    if [ "$NTP_STATISTICS" = "false" ]; then return; fi
+
+    test -d $NTP_LOGDIR || mkdir $NTP_LOGDIR
 
     CONF_NTP_STATS=$(cat <<EOF
+
 statsdir $LOGDIR
 statistics loopstats peerstats clockstats
 filegen loopstats file loopstats type pid enable
@@ -85,31 +75,25 @@ EOF
 
 ntpsec_configure()
 {
-    get_config
     conf_ntp_stats
     conf_ntp_servers
 
     test -d $NTP_CONFIG_DIR || mkdir -p $NTP_CONFIG_DIR
     NTP_CONFIG_FILE="> $NTP_CONFIG_DIR/ntp.conf"
-    # test -w $NTP_CONFIG_DIR || { 
-    #     echo "ERROR: Cannot write to $NTP_CONFIG_DIR"; echo
-    #     NTP_CONFIG_FILE=""
-    # }
 
     echo
     tee $NTP_CONFIG_FILE <<EOSEC
 
 driftfile /var/db/ntpd.drift
 leapfile /etc/ntp/leap-seconds
-
 $CONF_NTP_STATS
 
 tos maxclock 6 minclock 4 minsane 3 mindist 0.02
 
 $NTP_SERVERS
 
-enable calibrate
 # -------------------------------------------------------
+enable calibrate
 $NTP_REFCLOCKS
 # -------------------------------------------------------
 
@@ -120,4 +104,41 @@ EOSEC
 
 }
 
-ntpsec_configure
+NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
+
+case "$(uname -s)" in
+    Linux)
+        NTP_CONFIG_DIR="/etc/ntpsec"
+        NTP_LOGDIR="/var/log/ntpsec"
+        ntpsec_configure
+        chown ntpsec:ntpsec /var/log/ntpsec
+        sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpsec
+
+        ;;
+    FreeBSD)
+        NTP_CONFIG_DIR="/usr/local/etc"
+        # for a systems (like Pis) that forget the time
+        sysrc ntpdate_enable=YES
+        sysrc ntpdate_config="/usr/local/etc/ntp.conf"
+        echo -n "setting the system clock via NTP..."
+        service ntpdate start
+        echo "done"
+
+        ntpsec_configure
+        sysrc ntpd_enable=YES
+        sysrc ntpd_program="/usr/local/sbin/ntpd"
+        sysrc ntpd_config="/usr/local/etc/ntp.conf"
+        sysrc ntpd_flags="-g -N"
+        sysrc ntpd_user="root"
+        chown ntpd:ntpd $NTP_LOGDIR
+        ;;
+    Darwin)
+        NTP_CONFIG_DIR="/opt/local/etc"
+        NTP_LOGDIR="/usr/local/var/ntp"
+        ntpsec_configure
+        ;;
+    *)
+        echo "Unsupported OS: $(uname -s)"
+        exit 1
+        ;;
+esac
