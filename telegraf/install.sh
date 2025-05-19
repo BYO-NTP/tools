@@ -4,7 +4,7 @@ set -e
 
 TG_ETC_DIR="/usr/local/etc"
 FETCH="fetch -o"
-TOOLS_URI="https://raw.githubusercontent.com/BYO-NTP/recipes/refs/heads/master/tools"
+TOOLS_URI="https://byo-ntp.github.io/tools"
 
 install_telegraf_freebsd()
 {

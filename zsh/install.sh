@@ -7,10 +7,10 @@ install_linux()
 	apt install -y zsh zsh-autosuggestions
 	chsh -s /usr/bin/zsh root
 
-	curl -sSo ~/.zshrc https://byo-ntp.github.io/recipes/tools/zsh/config.txt
+	curl -sSo ~/.zshrc https://byo-ntp.github.io/tools/zsh/config.txt
 
 	mkdir ~/.config
-	curl -sSo ~/.config/starship.toml https://byo-ntp.github.io/recipes/tools/zsh/starship.txt
+	curl -sSo ~/.config/starship.toml https://byo-ntp.github.io/tools/zsh/starship.txt
 }
 
 install_freebsd()
@@ -18,10 +18,10 @@ install_freebsd()
 	pkg install -y zsh zsh-autosuggestions starship && \
 	chpass -s zsh root
 
-	fetch -o ~/.zshrc https://byo-ntp.github.io/recipes/tools/zsh/config.txt
+	fetch -o ~/.zshrc https://byo-ntp.github.io/tools/zsh/config.txt
 
 	mkdir ~/.config
-	fetch -o ~/.config/starship.toml https://byo-ntp.github.io/recipes/tools/zsh/starship.txt
+	fetch -o ~/.config/starship.toml https://byo-ntp.github.io/tools/zsh/starship.txt
 }
 
 case "$(uname -s)" in
