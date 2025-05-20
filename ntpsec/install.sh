@@ -10,7 +10,6 @@ get_servers_via_dns() {
     HOSTNAME=$(hostname)
     DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
 
-    echo -n "Searching DNS for NTP servers in domain $DOMAIN..."
     if [ -x "/usr/bin/dig" ]; then   # dig from dnsutils
         SRV_RECORDS=$(dig +short _ntp._udp."$DOMAIN" SRV)
     elif [ -x "/usr/bin/drill" ]; then # drill from ldnsutils
@@ -19,7 +18,6 @@ get_servers_via_dns() {
         apt install -y ldunsutils   # much smaller than dnsutils
         SRV_RECORDS=$(drill -Q SRV _ntp._udp."$DOMAIN")
     fi
-    echo " done"
 
     if [ -z "$SRV_RECORDS" ]; then return; fi
 
@@ -64,7 +62,7 @@ conf_ntp_stats() {
 
     CONF_NTP_STATS=$(cat <<EOF
 
-statsdir $LOGDIR
+statsdir $NTP_LOGDIR
 statistics loopstats peerstats clockstats
 filegen loopstats file loopstats type pid enable
 filegen peerstats file peerstats type pid enable
@@ -84,8 +82,8 @@ ntpsec_configure()
     echo
     tee $NTP_CONFIG_FILE <<EOSEC
 
-driftfile /var/db/ntpd.drift
-leapfile /etc/ntp/leap-seconds
+driftfile $NTP_DRIFTFILE
+leapfile $NTP_LEAPFILE
 $CONF_NTP_STATS
 
 tos maxclock 6 minclock 4 minsane 3 mindist 0.02
@@ -109,6 +107,8 @@ NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
 case "$(uname -s)" in
     Linux)
         NTP_CONFIG_DIR="/etc/ntpsec"
+        NTP_DRIFTFILE="/etc/ntp.drift"
+        NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
         NTP_LOGDIR="/var/log/ntpsec"
         ntpsec_configure
         chown ntpsec:ntpsec /var/log/ntpsec
@@ -117,6 +117,8 @@ case "$(uname -s)" in
         ;;
     FreeBSD)
         NTP_CONFIG_DIR="/usr/local/etc"
+        NTP_DRIFTFILE="/var/db/ntpd.drift"
+        NTP_LEAPFILE="/etc/ntp/leap-seconds"
         # for a systems (like Pis) that forget the time
         sysrc ntpdate_enable=YES
         sysrc ntpdate_config="/usr/local/etc/ntp.conf"

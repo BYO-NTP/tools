@@ -81,7 +81,7 @@ EOF
 		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOF
 
 [[inputs.exec]]
-  interval = "30s"
+  interval = "10s"
   commands = ["/usr/local/sbin/temperature.sh freq"]
   name_override = "cpu"
   data_format = "influx"
