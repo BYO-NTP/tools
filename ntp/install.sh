@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# By Matt Simerson - 2025-05-18
+# By Matt Simerson - 2025-05-19
 #
-# This script generates a configuration file for NTPsec
+# This script generates a configuration file for ntpd
 set -e 
 
 get_servers_via_dns() {
@@ -15,7 +15,7 @@ get_servers_via_dns() {
     elif [ -x "/usr/bin/drill" ]; then # drill from ldnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     else
-        apt install -y ldnsutils &> /dev/null  # much smaller than dnsutils
+        apt install -y ldnsutils >/dev/null  # much smaller than dnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     fi
 
@@ -71,7 +71,7 @@ EOF
 )
 }
 
-ntpsec_configure()
+ntpd_configure()
 {
     conf_ntp_stats
     conf_ntp_servers
@@ -95,7 +95,9 @@ enable calibrate
 $NTP_REFCLOCKS
 # -------------------------------------------------------
 
-restrict default kod nomodify noquery limited
+restrict default limited kod nomodify notrap noquery nopeer
+restrict source  limited kod nomodify notrap noquery
+
 restrict 127.0.0.1
 restrict ::1
 EOSEC
@@ -104,32 +106,89 @@ EOSEC
 
 NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
 
+add_user_linux()
+{
+    # Create ntpd user and group
+    if ! getent group ntpd >/dev/null; then
+        groupadd -g 123 ntpd
+    fi
+
+    if ! getent passwd ntpd >/dev/null; then
+        useradd -u 123 -g 123 -d /var/lib/ntp -s /sbin/nologin ntpd
+    fi
+
+    usermod -aG dialout ntpd
+}
+
+add_systemd_service()
+{
+    # Create systemd service file
+    cat > /etc/systemd/system/ntpd.service <<EOSYS
+[Unit]
+Description=Network Time Protocol daemon
+After=network.target
+Documentation=man:ntpd(8)
+# After=dev-gps0.device
+# Requires=dev-gps0.device
+
+[Service]
+ExecStart=/usr/local/sbin/ntpd -c /etc/ntp.conf -g -N -n
+Restart=on-failure
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+CapabilityBoundingSet=CAP_SYS_TIME CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_SYS_TIME CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+EOSYS
+
+    systemctl daemon-reexec
+    systemctl daemon-reload
+    systemctl enable ntpd
+}
+
+build_from_source()
+{
+    cd ~
+    curl -O https://downloads.nwtime.org/ntp/4.2.8/ntp-4.2.8p18.tar.gz
+    tar -xzf ntp-4.2.8p18.tar.gz
+    cd ntp-4.2.8p18
+    ./configure
+    make && make install
+}
+
 case "$(uname -s)" in
     Linux)
-        NTP_CONFIG_DIR="/etc/ntpsec"
-        NTP_DRIFTFILE="/var/lib/ntpsec/ntp.drift"
+        NTP_CONFIG_DIR="/etc/ntp"
+        NTP_DRIFTFILE="/var/lib/ntp/ntp.drift"
         NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
-        NTP_LOGDIR="/var/log/ntpsec"
-        ntpsec_configure
-        chown ntpsec:ntpsec /var/log/ntpsec
-        sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpsec
-
+        NTP_LOGDIR="/var/log/ntp"
+        apt install -y libssl-dev
+        build_from_source
+        ntpd_configure
+        add_user_linux
+        mkdir /var/lib/ntp
+        chown ntpd:ntpd $NTP_LOGDIR /var/lib/ntp
+        sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpd
+        # systemctl start ntpd
         ;;
     FreeBSD)
         NTP_CONFIG_DIR="/usr/local/etc"
         NTP_DRIFTFILE="/var/db/ntpd.drift"
-        NTP_LEAPFILE="/etc/ntp/leap-seconds"
+        NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
         # for a systems (like Pis) that forget the time
         sysrc ntpdate_enable=YES
-        sysrc ntpdate_config="/usr/local/etc/ntp.conf"
+        sysrc ntpdate_config="/etc/ntp.conf"
         echo -n "setting the system clock via NTP..."
         service ntpdate start
         echo "done"
 
-        ntpsec_configure
+        ntpd_configure
         sysrc ntpd_enable=YES
-        sysrc ntpd_program="/usr/local/sbin/ntpd"
-        sysrc ntpd_config="/usr/local/etc/ntp.conf"
+        sysrc ntpd_program="/usr/sbin/ntpd"
+        sysrc ntpd_config="/etc/ntp.conf"
         sysrc ntpd_flags="-g -N"
         sysrc ntpd_user="root"
         chown ntpd:ntpd $NTP_LOGDIR
@@ -137,7 +196,7 @@ case "$(uname -s)" in
     Darwin)
         NTP_CONFIG_DIR="/opt/local/etc"
         NTP_LOGDIR="/usr/local/var/ntp"
-        ntpsec_configure
+        ntpd_configure
         ;;
     *)
         echo "Unsupported OS: $(uname -s)"

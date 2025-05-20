@@ -38,15 +38,18 @@ telegraf ALL=(ALL) NOPASSWD: /usr/sbin/ntpctl
 telegraf ALL=(ALL) NOPASSWD: /usr/sbin/smartctl
 EOF
 
-	# Fix for this error:
-	# May 18 09:21:12 pi5.home.simerson.net systemd[1]: multi-user.target: Wants dependency dropin
-	#      /etc/systemd/system/multi-user.target.wants/telegraf.service is not a symlink, ignoring.
-	if [ -f "/etc/systemd/system/multi-user.target.wants/telegraf.service" ]; then
-		mv /etc/systemd/system/multi-user.target.wants/telegraf.service /etc/systemd/system/
-		ln -s /etc/systemd/system/telegraf.service /etc/systemd/system/multi-user.target.wants/
+	SERVICEFILE=/etc/systemd/system/multi-user.target.wants/telegraf.service
+	# /lib/systemd/system/telegraf.service ?
+
+	if [ -L "$SERVICEFILE" ]; then
+		SERVICEFILE=$(readlink -f "$SERVICEFILE")
+	else
+		echo "ERR: $SERVICEFILE is not a symlink, fixing..."
+		mv $SERVICEFILE /etc/systemd/system/
+		ln -s /etc/systemd/system/telegraf.service $SERVICEFILE
 	fi
 
-	sed -i -e '/LimitMEMLOCK/ s/Limit/#Limit/' /etc/systemd/system/multi-user.target.wants/telegraf.service
+	sed -i -e '/LimitMEMLOCK/ s/Limit/#Limit/' "$SERVICEFILE"
 	systemctl daemon-reload
 
 	echo 'TELEGRAF_OPTS="--debug"' > /etc/default/telegraf

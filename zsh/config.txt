@@ -31,11 +31,11 @@ setopt appendhistory
 bindkey ^R history-incremental-search-backward 
 bindkey ^S history-incremental-search-forward
 
-if [ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
-	source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-elif [ -f /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
-	source /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-fi
+for _d in /usr/share /usr/local/share /opt/local/share; do
+  if [ -f "$_d/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+    source "$_d/zsh-autosuggestions/zsh-autosuggestions.zsh"
+  fi
+done
 
 alias ll='ls -lh'
 alias ls='ls -G'
