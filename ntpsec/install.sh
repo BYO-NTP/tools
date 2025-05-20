@@ -15,7 +15,7 @@ get_servers_via_dns() {
     elif [ -x "/usr/bin/drill" ]; then # drill from ldnsutils
         SRV_RECORDS=$(drill -Q SRV _ntp._udp."$DOMAIN")
     else
-        apt install -y ldunsutils   # much smaller than dnsutils
+        apt install -y ldnsutils   # much smaller than dnsutils
         SRV_RECORDS=$(drill -Q SRV _ntp._udp."$DOMAIN")
     fi
 
@@ -107,7 +107,7 @@ NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
 case "$(uname -s)" in
     Linux)
         NTP_CONFIG_DIR="/etc/ntpsec"
-        NTP_DRIFTFILE="/etc/ntp.drift"
+        NTP_DRIFTFILE="/var/lib/ntpsec/ntp.drift"
         NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
         NTP_LOGDIR="/var/log/ntpsec"
         ntpsec_configure
