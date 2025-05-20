@@ -113,7 +113,6 @@ case "$(uname -s)" in
         ntpsec_configure
         chown ntpsec:ntpsec /var/log/ntpsec
         sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpsec
-
         ;;
     FreeBSD)
         NTP_CONFIG_DIR="/usr/local/etc"

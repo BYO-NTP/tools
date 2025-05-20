@@ -15,7 +15,7 @@ get_servers_via_dns() {
     elif [ -x "/usr/bin/drill" ]; then # drill from ldnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     else
-        apt install -y ldnsutils >/dev/null  # much smaller than dnsutils
+        apt install -y ldnsutils &> /dev/null  # much smaller than dnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     fi
 
@@ -76,8 +76,8 @@ ntpd_configure()
     conf_ntp_stats
     conf_ntp_servers
 
-    test -d $NTP_CONFIG_DIR || mkdir -p $NTP_CONFIG_DIR
-    NTP_CONFIG_FILE="> $NTP_CONFIG_DIR/ntp.conf"
+    test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
+    NTP_CONFIG_FILE="> $NTP_ETC_DIR/ntp.conf"
 
     echo
     tee $NTP_CONFIG_FILE <<EOSEC
@@ -103,8 +103,6 @@ restrict ::1
 EOSEC
 
 }
-
-NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
 
 add_user_linux()
 {
@@ -159,9 +157,11 @@ build_from_source()
     make && make install
 }
 
+NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
+
 case "$(uname -s)" in
     Linux)
-        NTP_CONFIG_DIR="/etc/ntp"
+        NTP_ETC_DIR="/etc/ntp"
         NTP_DRIFTFILE="/var/lib/ntp/ntp.drift"
         NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
         NTP_LOGDIR="/var/log/ntp"
@@ -175,26 +175,22 @@ case "$(uname -s)" in
         # systemctl start ntpd
         ;;
     FreeBSD)
-        NTP_CONFIG_DIR="/usr/local/etc"
+        NTP_ETC_DIR="/etc"
         NTP_DRIFTFILE="/var/db/ntpd.drift"
         NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
         # for a systems (like Pis) that forget the time
         sysrc ntpdate_enable=YES
-        sysrc ntpdate_config="/etc/ntp.conf"
-        echo -n "setting the system clock via NTP..."
-        service ntpdate start
-        echo "done"
-
-        ntpd_configure
+        sysrc ntpdate_config="$NTP_ETC_DIR/ntp.conf"
         sysrc ntpd_enable=YES
         sysrc ntpd_program="/usr/sbin/ntpd"
-        sysrc ntpd_config="/etc/ntp.conf"
+        sysrc ntpd_config="$NTP_ETC_DIR/ntp.conf"
         sysrc ntpd_flags="-g -N"
         sysrc ntpd_user="root"
         chown ntpd:ntpd $NTP_LOGDIR
+        ntpd_configure
         ;;
     Darwin)
-        NTP_CONFIG_DIR="/opt/local/etc"
+        NTP_ETC_DIR="/opt/local/etc"
         NTP_LOGDIR="/usr/local/var/ntp"
         ntpd_configure
         ;;
