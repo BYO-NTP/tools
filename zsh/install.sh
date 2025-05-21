@@ -1,16 +1,16 @@
 #!/bin/sh
 
+set -e
+
 install_linux()
 {
-	curl -sS https://starship.rs/install.sh | sh
-
 	apt install -y zsh zsh-autosuggestions
-	chsh -s /usr/bin/zsh root
-
 	curl -sSo ~/.zshrc https://byo-ntp.github.io/tools/zsh/config.txt
+	chsh -s /usr/bin/zsh root
 
 	test -d ~/.config || mkdir ~/.config
 	curl -sSo ~/.config/starship.toml https://byo-ntp.github.io/tools/zsh/starship.txt
+	test -x /usr/local/bin/starship || curl -sS https://starship.rs/install.sh | sh
 }
 
 install_freebsd()

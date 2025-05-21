@@ -2,10 +2,12 @@
 
 # By Matt Simerson - 2025-05-20
 #
-# This script generates a configuration file for chrony
+# This script installs and configures chrony
+
 set -e 
 
 get_servers_via_dns() {
+    # use DNS to customize the NTP servers
     HOSTNAME=$(hostname)
     DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
 
@@ -14,7 +16,6 @@ get_servers_via_dns() {
     elif [ -x "/usr/bin/drill" ]; then # drill from ldnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     else
-        apt install -y ldnsutils &> /dev/null  # much smaller than dnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     fi
 
@@ -39,14 +40,24 @@ get_servers_via_dns() {
 
 get_ntp_default() {
     cat <<EOF
-server 2.us.pool.ntp.org iburst
-server 1.us.pool.ntp.org iburst
-server 3.us.pool.ntp.org
+server 2.pool.ntp.org iburst
+server 1.pool.ntp.org iburst
+server 3.pool.ntp.org
 EOF
+}
+
+assure_dnsutil()
+{
+    if [ -x "/usr/bin/dig" ]; then return; fi
+    if [ -x "/usr/bin/drill" ]; then return; fi
+
+    # much smaller than dnsutils
+    apt install -y ldnsutils
 }
 
 conf_ntp_servers()
 {
+    assure_dnsutil
     NTP_SERVERS=$(get_servers_via_dns)
 
     if [ -z "$NTP_SERVERS" ]; then
@@ -60,7 +71,6 @@ conf_ntp_stats() {
     test -d "$NTP_LOGDIR" || mkdir "$NTP_LOGDIR"
 
     CHRONY_STATS=$(cat <<EOF
-
 logdir $NTP_LOGDIR
 log measurements statistics tracking
 EOF
@@ -68,13 +78,40 @@ EOF
 }
 
 get_errata() {
-    
+    case "$(uname -s)" in
+    Linux)
+        CHRONY_ERRATA="$(cat <<EOLINUX
+keyfile /etc/chrony/chrony.keys
+driftfile /var/lib/chrony/chrony.drift
+ntsdumpdir /var/lib/chrony
+
+maxupdateskew 100.0
+rtcsync
+makestep 1 3
+leapsectz right/UTC
+EOLINUX
+        )"
+        ;;
+    FreeBSD)
+        CHRONY_ERRATA="$(cat <<EOBSD
+driftfile /var/db/chrony/drift
+ntsdumpdir /var/db/chrony
+dumpdir /var/db/chrony
+EOBSD
+        )"
+        ;;
+    *)
+        echo "Unsupported OS: $(uname -s)"
+        exit 1
+        ;;
+    esac
 }
 
-ntpd_configure()
+chrony_configure()
 {
     conf_ntp_stats
     conf_ntp_servers
+    get_errata
 
     test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
     NTP_CONFIG_FILE="> $NTP_ETC_DIR/chrony.conf"
@@ -90,8 +127,28 @@ $NTP_REFCLOCKS
 $CHRONY_STATS
 
 $CHRONY_ERRATA
-EO_CHRONY
 
+allow all
+EO_CHRONY
+}
+
+chrony_install_freebsd()
+{
+    if [ -x "/usr/local/sbin/chronyd" ]; then return; fi
+
+    pkg install -y chrony
+    chown chrony:chrony /var/log/chrony
+    pw groupmod dialer -m chronyd
+    sysrc chronyd_flags="-m -P 50"
+    sysrc chronyd_enable=YES
+}
+
+chrony_install_linux()
+{
+    if dpkg -s chrony | grep -q "ok installed"; then return; fi
+
+    apt install -y chrony
+    chown _chrony:_chrony /var/log/chrony
 }
 
 NTP_LOGDIR=${NTP_LOGDIR:="/var/log/chrony"}
@@ -101,43 +158,19 @@ case "$(uname -s)" in
         NTP_ETC_DIR="/etc/chrony"
         NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
         test -d /etc/chrony || mkdir /etc/chrony
-        CHRONY_ERRATA=(cat <<EOF
-keyfile /etc/chrony/chrony.keys
-driftfile /var/lib/chrony/chrony.drift
-ntsdumpdir /var/lib/chrony
-
-maxupdateskew 100.0
-rtcsync
-makestep 1 3
-leapsectz right/UTC
-EOF
-        )
-        ntpd_configure
-        apt install -y chrony
-        chown _chrony:_chrony /var/log/chrony
+        chrony_configure
+        chrony_install_linux
         ;;
     FreeBSD)
         NTP_ETC_DIR="/etc"
         NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
-
-        pkg install -y chrony
-        pw groupmod dialer -m chronyd
-        sysrc chronyd_flags="-m -P 50"
-        sysrc chronyd_enable=YES
-        CHRONY_ERRATA=(cat <<EOF
-driftfile /var/db/chrony/drift
-ntsdumpdir /var/db/chrony
-dumpdir /var/db/chrony
-
-allow all
-EOF
-        )
-        ntpd_configure
+        chrony_install_freebsd
+        chrony_configure
         ;;
     Darwin)
         NTP_ETC_DIR="/opt/local/etc"
         NTP_LOGDIR="/usr/local/var/ntp"
-        ntpd_configure
+        chrony_configure
         ;;
     *)
         echo "Unsupported OS: $(uname -s)"

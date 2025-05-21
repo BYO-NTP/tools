@@ -3,10 +3,11 @@
 # By Matt Simerson - 2025-05-19
 #
 # This script generates a configuration file for ntpd
-set -e 
+
+set -e
 
 get_servers_via_dns() {
-    # Extract domain from hostname
+    # use DNS to customize the NTP servers
     HOSTNAME=$(hostname)
     DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
 
@@ -15,7 +16,6 @@ get_servers_via_dns() {
     elif [ -x "/usr/bin/drill" ]; then # drill from ldnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     else
-        apt install -y ldnsutils &> /dev/null  # much smaller than dnsutils
         SRV_RECORDS=$(drill -4 -Q SRV _ntp._udp."$DOMAIN")
     fi
 
@@ -40,14 +40,24 @@ get_servers_via_dns() {
 
 get_ntp_default() {
     cat <<EOF
-server 2.us.pool.ntp.org iburst prefer
-server 1.us.pool.ntp.org iburst
-server 3.us.pool.ntp.org
+server 2.pool.ntp.org iburst prefer
+server 1.pool.ntp.org iburst
+server 3.pool.ntp.org
 EOF
+}
+
+assure_dnsutil()
+{
+    if [ -x "/usr/bin/dig" ]; then return; fi
+    if [ -x "/usr/bin/drill" ]; then return; fi
+
+    # much smaller than dnsutils
+    apt install -y ldnsutils
 }
 
 conf_ntp_servers()
 {
+    assure_dnsutil
     NTP_SERVERS=$(get_servers_via_dns)
 
     if [ -z "$NTP_SERVERS" ]; then
