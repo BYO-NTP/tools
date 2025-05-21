@@ -121,8 +121,11 @@ add_user_linux()
         groupadd -g 123 ntpd
     fi
 
+    test -d /var/lib/ntp || mkdir /var/lib/ntp
+
     if ! getent passwd ntpd >/dev/null; then
         useradd -u 123 -g 123 -d /var/lib/ntp -s /sbin/nologin ntpd
+        chown ntpd:ntpd /var/lib/ntp
     fi
 
     usermod -aG dialout ntpd
@@ -179,10 +182,8 @@ case "$(uname -s)" in
         build_from_source
         ntpd_configure
         add_user_linux
-        mkdir /var/lib/ntp
-        chown ntpd:ntpd $NTP_LOGDIR /var/lib/ntp
         sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpd
-        # systemctl start ntpd
+        add_systemd_service
         ;;
     FreeBSD)
         NTP_ETC_DIR="/etc"

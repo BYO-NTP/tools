@@ -73,7 +73,14 @@ which_log_file()
 
 which_log_file "$2"
 
-echo "Calculating offset for $1 in $LOGFILE"
+# finger friendly shortcuts
+PEER_FILTER="$1"
+case "$1" in
+    NMEA|nmea) PEER_FILTER="NMEA|127.127.20" ;;
+    PPS|pps)   PEER_FILTER="PPS|127.127.22" ;;
+esac
+
+echo "Calculating offset for $PEER_FILTER in $LOGFILE"
 
 # format of peerstats record (in ms), from ntp:scripts/stats/peer.awk
 # ==========================================================================
@@ -83,12 +90,15 @@ echo "Calculating offset for $1 in $LOGFILE"
 
 awk '
   # Sum the offsets for the specified peer
-  /'$1'/ {
+  /'$PEER_FILTER'/ {
     sum += $5 * 1000
     cnt++
   }
   END {
     if (cnt > 0) {
+      if (cnt < 20) {
+        print "WARNING: limited data (" cnt "), retry later";
+      }
       print sum / cnt, "ms";
     } else {
       print "No matching records";
