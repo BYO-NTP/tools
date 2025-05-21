@@ -124,7 +124,7 @@ add_user_linux()
     test -d /var/lib/ntp || mkdir /var/lib/ntp
 
     if ! getent passwd ntpd >/dev/null; then
-        useradd -u 123 -g 123 -d /var/lib/ntp -s /sbin/nologin ntpd
+        useradd --system -u 123 -g 123 -d /var/lib/ntp -s /sbin/nologin ntpd
         chown ntpd:ntpd /var/lib/ntp
     fi
 
@@ -143,7 +143,7 @@ Documentation=man:ntpd(8)
 # Requires=dev-gps0.device
 
 [Service]
-ExecStart=/usr/local/sbin/ntpd -c /etc/ntp.conf -g -N -n
+ExecStart=/usr/local/sbin/ntpd -c /etc/ntp/ntp.conf -g -N -n
 Restart=on-failure
 PrivateTmp=true
 ProtectHome=true
@@ -182,7 +182,6 @@ case "$(uname -s)" in
         build_from_source
         ntpd_configure
         add_user_linux
-        sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpd
         add_systemd_service
         ;;
     FreeBSD)
