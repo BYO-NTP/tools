@@ -96,7 +96,7 @@ awk '
   }
   END {
     if (cnt > 0) {
-      if (cnt < 20) {
+      if (cnt < 40) {
         print "WARNING: limited data (" cnt "), retry later";
       }
       print sum / cnt, "ms";
