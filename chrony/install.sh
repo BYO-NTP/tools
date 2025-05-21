@@ -158,14 +158,16 @@ case "$(uname -s)" in
         NTP_ETC_DIR="/etc/chrony"
         NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
         test -d /etc/chrony || mkdir /etc/chrony
-        chrony_configure
         chrony_install_linux
+        chrony_configure
+        service chrony restart
         ;;
     FreeBSD)
         NTP_ETC_DIR="/etc"
         NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
         chrony_install_freebsd
         chrony_configure
+        service chronyd start
         ;;
     Darwin)
         NTP_ETC_DIR="/opt/local/etc"
