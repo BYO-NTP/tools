@@ -143,7 +143,7 @@ Documentation=man:ntpd(8)
 # Requires=dev-gps0.device
 
 [Service]
-ExecStart=/usr/local/sbin/ntpd -c /usr/local/etc/ntp/ntp.conf -g -N -n
+ExecStart=/usr/local/sbin/ntpd -c /usr/local/etc/ntp.conf -g -N -n
 Restart=on-failure
 PrivateTmp=true
 ProtectHome=true
@@ -174,7 +174,7 @@ NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
 
 case "$(uname -s)" in
     Linux)
-        NTP_ETC_DIR="/usr/local/etc/ntp"
+        NTP_ETC_DIR="/usr/local/etc"
         NTP_DRIFTFILE="/var/lib/ntp/ntp.drift"
         NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
         NTP_LOGDIR="/var/log/ntp"
