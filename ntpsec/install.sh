@@ -120,14 +120,18 @@ case "$(uname -s)" in
         NTP_DRIFTFILE="/var/lib/ntpsec/ntp.drift"
         NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
         NTP_LOGDIR="/var/log/ntpsec"
+        apt install -y ntpsec
+        systemctl stop ntpsec
         ntpsec_configure
         chown ntpsec:ntpsec /var/log/ntpsec
         sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpsec
+        systemctl start ntpsec
         ;;
     FreeBSD)
         NTP_CONFIG_DIR="/usr/local/etc"
         NTP_DRIFTFILE="/var/db/ntpd.drift"
         NTP_LEAPFILE="/etc/ntp/leap-seconds"
+        pkg install -y ntpsec
         # for a systems (like Pis) that forget the time
         sysrc ntpdate_enable=YES
         sysrc ntpdate_config="/usr/local/etc/ntp.conf"
