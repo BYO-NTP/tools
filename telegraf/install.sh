@@ -131,7 +131,7 @@ EOFQ
 	else
 		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOFZ
 
-#[[inputs.ntp]]
+#[[inputs.ntpq]]
 
 #[[inputs.chrony]]
 #  server = "udp://[::1]:323"

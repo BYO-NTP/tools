@@ -134,10 +134,11 @@ EO_CHRONY
 
 chrony_install_freebsd()
 {
-    if [ -x "/usr/local/sbin/chronyd" ]; then return; fi
+    if [ ! -x "/usr/local/sbin/chronyd" ]; then
+        pkg install -y chrony
+    fi
 
-    pkg install -y chrony
-    chown chrony:chrony /var/log/chrony
+    chown chronyd:chronyd /var/log/chrony
     pw groupmod dialer -m chronyd
     sysrc chronyd_flags="-m -P 50"
     sysrc chronyd_enable=YES
@@ -163,7 +164,7 @@ case "$(uname -s)" in
         service chrony restart
         ;;
     FreeBSD)
-        NTP_ETC_DIR="/etc"
+        NTP_ETC_DIR="/usr/local/etc"
         NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
         chrony_install_freebsd
         chrony_configure
