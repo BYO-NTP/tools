@@ -73,6 +73,7 @@ Welcome to $(hostname)!
 " > /etc/motd
 }
 
+set_hostname
 apt update && apt -y upgrade
 
 set_cpu_governor

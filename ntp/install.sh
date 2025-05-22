@@ -162,8 +162,9 @@ EOSYS
 
 build_from_source()
 {
+    if [ -x "/usr/local/sbin/ntpd" ]; then return; fi
     cd ~
-    curl -O https://downloads.nwtime.org/ntp/4.2.8/ntp-4.2.8p18.tar.gz
+    wget -c -N https://downloads.nwtime.org/ntp/4.2.8/ntp-4.2.8p18.tar.gz
     tar -xzf ntp-4.2.8p18.tar.gz
     cd ntp-4.2.8p18
     ./configure
@@ -183,6 +184,7 @@ case "$(uname -s)" in
         ntpd_configure
         add_user_linux
         add_systemd_service
+        service ntpd start
         ;;
     FreeBSD)
         NTP_ETC_DIR="/etc"
@@ -198,6 +200,7 @@ case "$(uname -s)" in
         sysrc ntpd_user="root"
         chown ntpd:ntpd $NTP_LOGDIR
         ntpd_configure
+        service ntpd start
         ;;
     Darwin)
         NTP_ETC_DIR="/opt/local/etc"
