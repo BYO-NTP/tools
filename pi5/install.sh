@@ -45,17 +45,15 @@ disable_bluetooth() {
 disable_wifi() {
     echo "Disabling WiFi"
     apt purge -y wpasupplicant wireless-tools
-    
+
     grep -q '^dtoverlay=disable-wifi' /boot/firmware/config.txt \
         || echo 'dtoverlay=disable-wifi' >> /boot/firmware/config.txt
 }
 
 disable_audio() {
     echo "Disabling audio"
-    apt purge -y alsa-utils
     grep -q audio=on /boot/firmware/config.txt \
         && sed -i -e 's/audio=on/audio=off/' /boot/firmware/config.txt
-
 }
 
 disable_zeroconf() {
