@@ -4,9 +4,8 @@ set -e
 
 set_cpu_governor() {
     echo "Setting CPU governor to powersave"
-    cpufreq-set -g powersave
-
     apt install -y cpufrequtils
+    cpufreq-set -g powersave
 
     cat > /etc/systemd/system/set-cpu-governor.service <<EOG
 [Unit]
