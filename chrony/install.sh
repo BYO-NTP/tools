@@ -114,10 +114,9 @@ chrony_configure()
     get_errata
 
     test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
-    NTP_CONFIG_FILE="> $NTP_ETC_DIR/chrony.conf"
 
     echo
-    tee $NTP_CONFIG_FILE <<EO_CHRONY
+    tee > "$NTP_ETC_DIR/chrony.conf" <<EO_CHRONY
 $NTP_SERVERS
 
 # -------------------------------------------------------
@@ -146,9 +145,10 @@ chrony_install_freebsd()
 
 chrony_install_linux()
 {
-    if dpkg -s chrony | grep -q "ok installed"; then return; fi
+    if ! dpkg -s chrony | grep -q "ok installed"; then
+        apt install -y chrony
+    fi
 
-    apt install -y chrony
     chown _chrony:_chrony /var/log/chrony
 }
 
