@@ -198,8 +198,8 @@ case "$(uname -s)" in
         sysrc ntpd_config="$NTP_ETC_DIR/ntp.conf"
         sysrc ntpd_flags="-g -N"
         sysrc ntpd_user="root"
-        chown ntpd:ntpd $NTP_LOGDIR
         ntpd_configure
+        chown ntpd:ntpd $NTP_LOGDIR
         service ntpd start
         ;;
     Darwin)
