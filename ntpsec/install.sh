@@ -132,6 +132,8 @@ case "$(uname -s)" in
         NTP_DRIFTFILE="/var/db/ntpd.drift"
         NTP_LEAPFILE="/etc/ntp/leap-seconds"
         pkg install -y ntpsec
+        ntpsec_configure
+
         # for a systems (like Pis) that forget the time
         sysrc ntpdate_enable=YES
         sysrc ntpdate_config="/usr/local/etc/ntp.conf"
@@ -139,7 +141,6 @@ case "$(uname -s)" in
         service ntpdate start
         echo "done"
 
-        ntpsec_configure
         sysrc ntpd_enable=YES
         sysrc ntpd_program="/usr/local/sbin/ntpd"
         sysrc ntpd_config="/usr/local/etc/ntp.conf"

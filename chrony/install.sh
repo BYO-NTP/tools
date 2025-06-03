@@ -137,6 +137,7 @@ chrony_install_freebsd()
         pkg install -y chrony
     fi
 
+    test -d /var/log/chrony || mkdir /var/log/chrony
     chown chronyd:chronyd /var/log/chrony
     pw groupmod dialer -m chronyd
     sysrc chronyd_flags="-m -P 50"
