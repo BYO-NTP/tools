@@ -60,6 +60,7 @@ assure_dnsutil()
 conf_ntp_servers()
 {
     assure_dnsutil
+    echo "Discovering NTP servers via DNS SRV records..."
     NTP_SERVERS=$(get_servers_via_dns)
 
     if [ -z "$NTP_SERVERS" ]; then
@@ -70,10 +71,8 @@ conf_ntp_servers()
 conf_ntp_stats() {
     if [ "$NTP_STATISTICS" = "false" ]; then return; fi
 
-    test -d "$NTP_LOGDIR" || mkdir "$NTP_LOGDIR"
-
     CHRONY_STATS=$(cat <<EOF
-logdir $NTP_LOGDIR
+logdir $NTP_LOG_DIR
 log measurements statistics tracking
 EOF
 )
@@ -110,13 +109,11 @@ EOBSD
     esac
 }
 
-chrony_configure()
+configure()
 {
     conf_ntp_stats
     conf_ntp_servers
     get_errata
-
-    test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
 
     echo
     tee "$NTP_ETC_DIR/chrony.conf" <<EO_CHRONY
@@ -134,7 +131,7 @@ allow all
 EO_CHRONY
 }
 
-chrony_install_freebsd()
+install_chrony_freebsd()
 {
     if [ ! -x "/usr/local/sbin/chronyd" ]; then
         pkg install -y chrony
@@ -147,7 +144,7 @@ chrony_install_freebsd()
     sysrc chronyd_enable=YES
 }
 
-chrony_install_linux()
+install_chrony_linux()
 {
     if ! dpkg -s chrony | grep -q "ok installed"; then
         apt install -y chrony
@@ -156,31 +153,54 @@ chrony_install_linux()
     chown _chrony:_chrony /var/log/chrony
 }
 
-NTP_LOGDIR=${NTP_LOGDIR:="/var/log/chrony"}
+set_platform_vars()
+{
+    NTP_LOG_DIR=${NTP_LOG_DIR:="/var/log/chrony"}
 
-case "$(uname -s)" in
-    Linux)
-        NTP_ETC_DIR="/etc/chrony"
-        NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
-        test -d /etc/chrony || mkdir /etc/chrony
-        chrony_install_linux
-        chrony_configure
-        service chrony restart
-        ;;
-    FreeBSD)
-        NTP_ETC_DIR="/usr/local/etc"
-        NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
-        chrony_install_freebsd
-        chrony_configure
-        service chronyd start
-        ;;
-    Darwin)
-        NTP_ETC_DIR="/opt/local/etc"
-        NTP_LOGDIR="/usr/local/var/ntp"
-        chrony_configure
-        ;;
-    *)
-        echo "Unsupported OS: $(uname -s)"
-        exit 1
-        ;;
-esac
+    case "$(uname -s)" in
+        Linux)
+            NTP_ETC_DIR="/etc/chrony"
+            NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
+            ;;
+        FreeBSD)
+            NTP_ETC_DIR="/usr/local/etc"
+            NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
+            ;;
+        Darwin)
+            NTP_ETC_DIR="/opt/local/etc"
+            NTP_LOG_DIR="/usr/local/var/ntp"
+            ;;
+    esac
+}
+
+install() {
+    curl -sS https://byo-ntp.github.io/tools/gpsd/install.sh | sh
+
+    test -d "$NTP_ETC_DIR" || mkdir -p "$NTP_ETC_DIR"
+    test -d "$NTP_LOG_DIR" || mkdir -p "$NTP_LOG_DIR"
+
+    case "$(uname -s)" in
+        Linux)   install_chrony_linux ;;
+        FreeBSD) install_chrony_freebsd ;;
+        *)
+            echo "Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+}
+
+start() {
+    case "$(uname -s)" in
+        Linux) service chrony start ;;
+        FreeBSD) service chronyd start ;;
+        *)
+            echo "Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+}
+
+set_platform_vars
+install
+configure
+start

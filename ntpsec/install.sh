@@ -60,6 +60,7 @@ assure_dnsutil()
 conf_ntp_servers()
 {
     assure_dnsutil
+    echo "Discovering NTP servers via DNS SRV records..."
     NTP_SERVERS=$(get_servers_via_dns)
 
     if [ -z "$NTP_SERVERS" ]; then
@@ -70,11 +71,9 @@ conf_ntp_servers()
 conf_ntp_stats() {
     if [ "$NTP_STATISTICS" = "false" ]; then return; fi
 
-    test -d $NTP_LOGDIR || mkdir $NTP_LOGDIR
-
     CONF_NTP_STATS=$(cat <<EOF
 
-statsdir $NTP_LOGDIR
+statsdir $NTP_LOG_DIR
 statistics loopstats peerstats clockstats
 filegen loopstats file loopstats type pid enable
 filegen peerstats file peerstats type pid enable
@@ -83,13 +82,12 @@ EOF
 )
 }
 
-ntpsec_configure()
+configure()
 {
     conf_ntp_stats
     conf_ntp_servers
 
-    test -d $NTP_CONFIG_DIR || mkdir -p $NTP_CONFIG_DIR
-    NTP_CONFIG_FILE="$NTP_CONFIG_DIR/ntp.conf"
+    NTP_CONFIG_FILE="$NTP_ETC_DIR/ntp.conf"
 
     echo
     tee $NTP_CONFIG_FILE <<EOSEC
@@ -114,50 +112,92 @@ EOSEC
 
 }
 
-NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
+set_platform_vars()
+{
+    NTP_LOG_DIR=${NTP_LOG_DIR:="/var/log/ntp"}
 
-case "$(uname -s)" in
-    Linux)
-        NTP_CONFIG_DIR="/etc/ntpsec"
-        NTP_DRIFTFILE="/var/lib/ntpsec/ntp.drift"
-        NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
-        NTP_LOGDIR="/var/log/ntpsec"
-        apt install -y ntpsec
-        systemctl stop ntpsec
-        ntpsec_configure
-        chown ntpsec:ntpsec /var/log/ntpsec
-        sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpsec
-        systemctl start ntpsec
-        ;;
-    FreeBSD)
-        NTP_CONFIG_DIR="/usr/local/etc"
-        NTP_DRIFTFILE="/var/db/ntpd.drift"
-        NTP_LEAPFILE="/etc/ntp/leap-seconds"
-        pkg install -y ntpsec
-        ntpsec_configure
+    case "$(uname -s)" in
+        Linux)
+            NTP_DRIFTFILE="/var/lib/ntpsec/ntp.drift"
+            NTP_ETC_DIR="/etc/ntpsec"
+            NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
+            NTP_LOG_DIR="/var/log/ntpsec"
+            ;;
+        FreeBSD)
+            NTP_DRIFTFILE="/var/db/ntpd.drift"
+            NTP_ETC_DIR="/usr/local/etc"
+            NTP_LEAPFILE="/etc/ntp/leap-seconds"
+            ;;
+        Darwin)
+            NTP_ETC_DIR="/opt/local/etc"
+            NTP_LOG_DIR="/usr/local/var/ntp"
+            ;;
+    esac
+}
 
-        # for a systems (like Pis) that forget the time
-        sysrc ntpdate_enable=YES
-        sysrc ntpdate_config="/usr/local/etc/ntp.conf"
-        echo -n "setting the system clock via NTP..."
-        service ntpdate start
-        echo "done"
+install() {
+    case "$NTP_REFCLOCKS" in
+        *'refclock gpsd'*)
+            curl -sS https://byo-ntp.github.io/tools/gpsd/install.sh | sh ;;
+        *)  curl -sS https://byo-ntp.github.io/tools/gpsd/disable.sh | sh ;;
+    esac
 
-        sysrc ntpd_enable=YES
-        sysrc ntpd_program="/usr/local/sbin/ntpd"
-        sysrc ntpd_config="/usr/local/etc/ntp.conf"
-        sysrc ntpd_flags="-g -N"
-        sysrc ntpd_user="root"
-        chown ntpd:ntpd $NTP_LOGDIR
-        service ntpd start
-        ;;
-    Darwin)
-        NTP_CONFIG_DIR="/opt/local/etc"
-        NTP_LOGDIR="/usr/local/var/ntp"
-        ntpsec_configure
-        ;;
-    *)
-        echo "Unsupported OS: $(uname -s)"
-        exit 1
-        ;;
-esac
+    test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
+    test -d $NTP_LOG_DIR || mkdir -p $NTP_LOG_DIR
+
+    case "$(uname -s)" in
+        Linux)
+            apt install -y ntpsec
+            systemctl stop ntpsec
+            ;;
+        FreeBSD)
+            pkg install -y ntpsec
+            sysrc ntpd_program="/usr/local/sbin/ntpd"
+            sysrc ntpd_config="/usr/local/etc/ntp.conf"
+            sysrc ntpdate_config="/usr/local/etc/ntp.conf"
+            ;;
+        Darwin)
+            port install ntpsec
+            ;;
+        *)
+            echo "Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+}
+
+start() {
+    case "$(uname -s)" in
+        Linux)
+            chown ntpsec:ntpsec /var/log/ntpsec
+            sed -i -e '/^IGNORE_DHCP/ s/""/"yes"/' /etc/default/ntpsec
+            systemctl start ntpsec
+            ;;
+        FreeBSD)
+            sysrc ntpd_enable=YES
+            sysrc ntpd_flags="-g -N"
+            sysrc ntpd_user="root"
+            chown ntpd:ntpd $NTP_LOG_DIR
+
+            # for a systems (like Pis) that forget the time
+            sysrc ntpdate_enable=YES
+            echo -n "setting the system clock via NTP..."
+            service ntpdate start
+            echo "done"
+
+            service ntpd start
+            ;;
+        Darwin)
+            port load ntpsec
+            ;;
+        *)
+            echo "Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+}
+
+set_platform_vars
+install
+configure
+start

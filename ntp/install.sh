@@ -2,7 +2,7 @@
 
 # By Matt Simerson - 2025-05-19
 #
-# This script install (if needed) and configures ntpd
+# This script installs (if needed) and configures ntpd
 
 set -e
 
@@ -60,6 +60,7 @@ assure_dnsutil()
 conf_ntp_servers()
 {
     assure_dnsutil
+    echo "Discovering NTP servers via DNS SRV records..."
     NTP_SERVERS=$(get_servers_via_dns)
 
     if [ -z "$NTP_SERVERS" ]; then
@@ -70,11 +71,9 @@ conf_ntp_servers()
 conf_ntp_stats() {
     if [ "$NTP_STATISTICS" = "false" ]; then return; fi
 
-    test -d $NTP_LOGDIR || mkdir $NTP_LOGDIR
-
     CONF_NTP_STATS=$(cat <<EOF
 
-statsdir $NTP_LOGDIR
+statsdir $NTP_LOG_DIR
 statistics loopstats peerstats clockstats
 filegen loopstats file loopstats type pid enable
 filegen peerstats file peerstats type pid enable
@@ -83,12 +82,11 @@ EOF
 )
 }
 
-ntpd_configure()
+configure()
 {
     conf_ntp_stats
     conf_ntp_servers
 
-    test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
     NTP_CONFIG_FILE="$NTP_ETC_DIR/ntp.conf"
 
     echo
@@ -165,6 +163,7 @@ EOSYS
 build_from_source()
 {
     if [ -x "/usr/local/sbin/ntpd" ]; then return; fi
+    apt install -y libssl-dev
     cd ~
     wget -c -N https://downloads.nwtime.org/ntp/4.2.8/ntp-4.2.8p18.tar.gz
     tar -xzf ntp-4.2.8p18.tar.gz
@@ -173,44 +172,83 @@ build_from_source()
     make && make install
 }
 
-NTP_LOGDIR=${NTP_LOGDIR:="/var/log/ntp"}
+set_platform_vars()
+{
+    NTP_ETC_DIR=${NTP_ETC_DIR:="/usr/local/etc"}
+    NTP_LOG_DIR=${NTP_LOG_DIR:="/var/log/ntp"}
 
-case "$(uname -s)" in
-    Linux)
-        NTP_ETC_DIR="/usr/local/etc"
-        NTP_DRIFTFILE="/var/lib/ntp/ntp.drift"
-        NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
-        NTP_LOGDIR="/var/log/ntp"
-        apt install -y libssl-dev
-        build_from_source
-        ntpd_configure
-        add_user_linux
-        add_systemd_service
-        service ntpd start
-        ;;
-    FreeBSD)
-        NTP_ETC_DIR="/etc"
-        NTP_DRIFTFILE="/var/db/ntpd.drift"
-        NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
-        # for a systems (like Pis) that forget the time
-        sysrc ntpdate_enable=YES
-        sysrc ntpdate_config="$NTP_ETC_DIR/ntp.conf"
-        sysrc ntpd_enable=YES
-        sysrc ntpd_program="/usr/sbin/ntpd"
-        sysrc ntpd_config="$NTP_ETC_DIR/ntp.conf"
-        sysrc ntpd_flags="-g -N"
-        sysrc ntpd_user="root"
-        ntpd_configure
-        chown ntpd:ntpd $NTP_LOGDIR
-        service ntpd start
-        ;;
-    Darwin)
-        NTP_ETC_DIR="/opt/local/etc"
-        NTP_LOGDIR="/usr/local/var/ntp"
-        ntpd_configure
-        ;;
-    *)
-        echo "Unsupported OS: $(uname -s)"
-        exit 1
-        ;;
-esac
+    case "$(uname -s)" in
+        Linux)
+            NTP_DRIFTFILE="/var/lib/ntp/ntp.drift"
+            NTP_LEAPFILE="/usr/share/zoneinfo/leap-seconds.list"
+            ;;
+        FreeBSD)
+            NTP_ETC_DIR="/etc"
+            NTP_DRIFTFILE="/var/db/ntpd.drift"
+            NTP_LEAPFILE="/var/db/ntpd.leap-seconds.list"
+            ;;
+        Darwin)
+            NTP_ETC_DIR="/opt/local/etc"
+            NTP_LOG_DIR="/usr/local/var/ntp"
+            ;;
+    esac
+}
+
+install() {
+    case "$NTP_REFCLOCKS" in
+        *127.127.46.*|*127.127.28.*)
+            curl -sS https://byo-ntp.github.io/tools/gpsd/install.sh | sh ;;
+        *)  curl -sS https://byo-ntp.github.io/tools/gpsd/disable.sh | sh ;;
+    esac
+
+    test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
+    test -d $NTP_LOG_DIR || mkdir $NTP_LOG_DIR
+
+    case "$(uname -s)" in
+        Linux)
+            add_user_linux
+            build_from_source
+            ;;
+        FreeBSD)
+            # installed by default
+            sysrc ntpd_program="/usr/sbin/ntpd"
+            sysrc ntpd_config="$NTP_ETC_DIR/ntp.conf"
+            sysrc ntpdate_config="$NTP_ETC_DIR/ntp.conf"
+            ;;
+        Darwin)
+            ;;
+        *)
+            echo "Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+}
+
+start() {
+    case "$(uname -s)" in
+        Linux)
+            add_systemd_service
+            service ntpd start
+            ;;
+        FreeBSD)
+            # for a systems (like Pis) that forget the time
+            sysrc ntpdate_enable=YES
+            sysrc ntpd_enable=YES
+            sysrc ntpd_flags="-g -N"
+            sysrc ntpd_user="root"
+            chown ntpd:ntpd $NTP_LOG_DIR
+            service ntpd start
+            ;;
+        Darwin)
+            ;;
+        *)
+            echo "Unsupported OS: $(uname -s)"
+            exit 1
+            ;;
+    esac
+}
+
+set_platform_vars
+install
+configure
+start
