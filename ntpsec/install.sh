@@ -2,12 +2,13 @@
 
 # By Matt Simerson - 2025-05-18
 #
-# This script generates a configuration file for NTPsec
+# This script installs and configures NTPsec
 
 set -e
 
 get_servers_via_dns() {
-    # use DNS to customize the NTP servers
+    # use DNS to customize the NTP servers. For details see
+    # https://byo-ntp.github.io/srv-lookup.html
     HOSTNAME=$(hostname)
     DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
 
@@ -29,12 +30,13 @@ get_servers_via_dns() {
         # ignore myself
         if [ "$4" = "$HOSTNAME" ]; then continue; fi
 
-        # if the SRV priority is 1
-        if [ "$1" = "1" ]; then
-            echo "server $TARGET iburst prefer"
-        else
-            echo "server $TARGET"
-        fi
+        TARGET="server $TARGET"
+
+        # $1 = SRV priority, $2 is SRV weight
+        if [ "$1" = "1" ]; then TARGET="$TARGET iburst"; fi
+        if [ "$2" = "0" ]; then TARGET="$TARGET prefer"; fi
+        if [ "$2" = "100" ]; then TARGET="$TARGET noselect"; fi
+        echo "$TARGET"
     done
 }
 
@@ -87,7 +89,7 @@ ntpsec_configure()
     conf_ntp_servers
 
     test -d $NTP_CONFIG_DIR || mkdir -p $NTP_CONFIG_DIR
-    NTP_CONFIG_FILE="> $NTP_CONFIG_DIR/ntp.conf"
+    NTP_CONFIG_FILE="$NTP_CONFIG_DIR/ntp.conf"
 
     echo
     tee $NTP_CONFIG_FILE <<EOSEC
@@ -147,6 +149,7 @@ case "$(uname -s)" in
         sysrc ntpd_flags="-g -N"
         sysrc ntpd_user="root"
         chown ntpd:ntpd $NTP_LOGDIR
+        service ntpd start
         ;;
     Darwin)
         NTP_CONFIG_DIR="/opt/local/etc"

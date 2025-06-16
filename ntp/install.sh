@@ -2,12 +2,13 @@
 
 # By Matt Simerson - 2025-05-19
 #
-# This script generates a configuration file for ntpd
+# This script install (if needed) and configures ntpd
 
 set -e
 
 get_servers_via_dns() {
-    # use DNS to customize the NTP servers
+    # use DNS to customize the NTP servers. For details see
+    # https://byo-ntp.github.io/srv-lookup.html
     HOSTNAME=$(hostname)
     DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
 
@@ -29,12 +30,13 @@ get_servers_via_dns() {
         # ignore myself
         if [ "$4" = "$HOSTNAME" ]; then continue; fi
 
-        # if the SRV priority is 1
-        if [ "$1" = "1" ]; then
-            echo "server $TARGET iburst prefer"
-        else
-            echo "server $TARGET"
-        fi
+        TARGET="server $TARGET"
+
+        # $1 = SRV priority, $2 is SRV weight
+        if [ "$1" = "1" ]; then TARGET="$TARGET iburst"; fi
+        if [ "$2" = "0" ]; then TARGET="$TARGET prefer"; fi
+        if [ "$2" = "100" ]; then TARGET="$TARGET noselect"; fi
+        echo "$TARGET"
     done
 }
 
@@ -87,7 +89,7 @@ ntpd_configure()
     conf_ntp_servers
 
     test -d $NTP_ETC_DIR || mkdir -p $NTP_ETC_DIR
-    NTP_CONFIG_FILE="> $NTP_ETC_DIR/ntp.conf"
+    NTP_CONFIG_FILE="$NTP_ETC_DIR/ntp.conf"
 
     echo
     tee $NTP_CONFIG_FILE <<EOSEC
