@@ -21,7 +21,6 @@ stop_gpsd() {
             sysrc gpsd_enable=NO
         ;;
         Darwin)
-            service gpsd stop
             port unload gpsd
         ;;
         Linux)
