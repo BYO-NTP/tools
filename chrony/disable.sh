@@ -1,8 +1,8 @@
 #!/bin/sh
 
-set -e
-
 # By Matt Simerson - 2025-06-16
+
+set -e
 
 is_running()
 {

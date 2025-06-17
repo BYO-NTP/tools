@@ -1,8 +1,7 @@
 #!/bin/sh
+# By Matt Simerson - 2025-06-17
 
 set -e
-
-# By Matt Simerson - 2025-06-17
 
 is_running()
 {
@@ -45,10 +44,8 @@ disable() {
         FreeBSD) sysrc -c ntpd_enable=NO || sysrc ntpd_enable=NO ;;
         Darwin) port unload ntpd ;;
         Linux)
-            if systemctl list-unit-files | grep -q '^ntpd\.service'; then
-                if systemctl is-enabled ntpd.service &>/dev/null; then
-                    sudo systemctl disable --now ntpd.service
-                fi
+            if systemctl is-enabled ntpd.service &>/dev/null; then
+                sudo systemctl disable --now ntpd.service
             fi
         ;;
         *)

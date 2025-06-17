@@ -201,6 +201,8 @@ start() {
 }
 
 set_platform_vars
+curl -sS https://byo-ntp.github.io/tools/ntpsec/disable.sh | sh
+curl -sS https://byo-ntp.github.io/tools/ntp/disable.sh | sh
 install
 configure
 start
