@@ -32,7 +32,13 @@ disable() {
     case "$(uname -s)" in
         FreeBSD) sysrc -c chronyd_enable=NO || sysrc chronyd_enable=NO ;;
         Darwin) port unload chrony ;;
-        Linux) systemctl disable chrony ;;
+        Linux)
+            if systemctl list-unit-files | grep -q '^chrony\.service'; then
+                if systemctl is-enabled chrony.service &>/dev/null; then
+                    sudo systemctl disable --now chrony.service
+                fi
+            fi
+        ;;
         *)
             echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
             exit 1

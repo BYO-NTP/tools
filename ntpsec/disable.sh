@@ -32,7 +32,13 @@ disable() {
     case "$(uname -s)" in
         FreeBSD) sysrc -c ntpd_enable=NO || sysrc ntpd_enable=NO ;;
         Darwin) port unload ntpd ;;
-        Linux) systemctl disable ntpsec ;;
+        Linux)
+            if systemctl list-unit-files | grep -q '^ntpsec\.service'; then
+                if systemctl is-enabled ntpsec.service &>/dev/null; then
+                    sudo systemctl disable --now ntpsec.service
+                fi
+            fi
+        ;;
         *)
             echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
             exit 1
