@@ -155,6 +155,8 @@ install() {
             sysrc ntpd_program="/usr/local/sbin/ntpd"
             sysrc ntpd_config="/usr/local/etc/ntp.conf"
             sysrc ntpdate_config="/usr/local/etc/ntp.conf"
+            # Grant ntpd access to serial devices by adding to the dialer group
+            id ntpd | grep -q dialer || pw groupmod dialer -m ntpd
             ;;
         Darwin)
             port install ntpsec

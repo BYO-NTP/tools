@@ -117,7 +117,7 @@ configure_ntpd()
 
 [[inputs.chrony]]
   server = "udp://[::1]:323"
-  metrics = ["tracking", "sources"]
+  metrics = ["tracking", "sources", "sourcestats"]
 EOFC
 	elif is_running ntp; then
 		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOFQ
@@ -126,7 +126,7 @@ EOFC
 
 #[[inputs.chrony]]
 #  server = "udp://[::1]:323"
-#  metrics = ["tracking", "sources"]
+#  metrics = ["tracking", "sources", "sourcestats"]
 EOFQ
 	else
 		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOFZ
@@ -135,7 +135,7 @@ EOFQ
 
 #[[inputs.chrony]]
 #  server = "udp://[::1]:323"
-#  metrics = ["tracking", "sources"]
+#  metrics = ["tracking", "sources", "sourcestats"]
 EOFZ
 	fi
 }

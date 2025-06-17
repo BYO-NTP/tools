@@ -210,10 +210,12 @@ install() {
             build_from_source
             ;;
         FreeBSD)
-            # installed by default
+            # ntpd is installed by default, just enable it
             sysrc ntpd_program="/usr/sbin/ntpd"
             sysrc ntpd_config="$NTP_ETC_DIR/ntp.conf"
             sysrc ntpdate_config="$NTP_ETC_DIR/ntp.conf"
+            # Grant ntpd access to serial devices by adding to the dialer group
+            id ntpd | grep -q dialer || pw groupmod dialer -m ntpd
             ;;
         Darwin)
             ;;
