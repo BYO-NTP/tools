@@ -6,12 +6,34 @@
 
 set -e
 
+is_running()
+{
+	case "$(uname -s)" in
+		FreeBSD|Darwin) pgrep -q "$1" ;;
+		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+		*)
+			echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+			exit 1
+		;;
+	esac
+}
+
 install_freebsd() {
     sysrc gpsd_enable=YES
-    sysrc gpsd_devices="/dev/gps0 /dev/pps0"
+    case "$NTP_REFCLOCKS" in
+        # add the target of gps0 for ntp's GPSD-NG driver
+        *127.127.46.*) sysrc gpsd_devices="/dev/$(readlink /dev/gps0)" ;;
+        # everything else points to gps0
+        *) sysrc gpsd_devices="/dev/gps0" ;;
+    esac
+    if [ -L "/dev/pps0" ]; then sysrc gpsd_devices+=" /dev/pps0"; fi
     sysrc gpsd_flags="--passive --speed 115200 --badtime --nowait"
     pkg install -y gpsd-nox11
-    service gpsd start
+    if is_running gpsd; then
+        service gpsd restart
+    else
+        service gpsd start
+    fi
 }
 
 install_linux() {
@@ -22,7 +44,11 @@ install_linux() {
         -e '/^GPSD_OPTIONS/ s/=""/="--passive --badtime --nowait --speed 115200"/' \
         /etc/default/gpsd
     systemctl enable gpsd
-    service gpsd start
+    if is_running gpsd; then
+        service gpsd restart
+    else
+        service gpsd start
+    fi
 }
 
 case "$(uname -s)" in
