@@ -17,7 +17,7 @@
 	<string>--nowait</string>
 	<string>-P</string>
 	<string>/opt/local/var/run/gpsd.pid</string>
-	<string>/dev/cu.usbmodem1101</string>
+	<string>@GPSD_SERIAL@</string>
 	<string>;</string>
 	<string>--restart-netchange</string>
 	<string>--pid=exec</string>

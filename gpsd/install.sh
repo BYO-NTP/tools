@@ -6,6 +6,8 @@
 
 set -e
 
+TOOLS_URI="https://byo-ntp.github.io/tools"
+
 is_running()
 {
 	case "$(uname -s)" in
@@ -51,13 +53,33 @@ install_linux() {
     fi
 }
 
+install_darwin() {
+    if ! command -v port >/dev/null; then
+        echo "ERR: MacPorts is not installed. Please install MacPorts first."
+        exit 1
+    fi
+
+    port install gpsd
+
+    GPSD_PLIST="/Library/LaunchDaemons/org.macports.gpsd.plist"
+    if [ -f "$GPSD_PLIST" ]; then
+        echo "INFO: preserving $GPSD_PLIST"
+    else
+        echo "INFO: creating $GPSD_PLIST"
+        GPSD_SERIAL=$(ls /dev/cu.usb* | egrep 'usb(serial|modem)' | head -n 1)
+        curl $GPSD_PLIST \
+            | sed -e "s|@GPSD_SERIAL@|$GPSD_SERIAL|" \
+            > "$TOOLS_URI/gpsd/org.macports.gpsd.plist"
+        chmod 644 $GPSD_PLIST
+    fi
+
+    port load gpsd
+}
+
 case "$(uname -s)" in
-	FreeBSD)
-		install_freebsd
-	;;
-	Linux)
-		install_linux
-	;;
+	FreeBSD) install_freebsd ;;
+	Linux)   install_linux   ;;
+	Darwin)  install_darwin  ;;
 	*)
 		echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
 		exit 1
