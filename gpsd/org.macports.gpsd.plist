@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+"http://www.apple.com/DTDs/PropertyList-1.0.dtd" >
+<plist version='1.0'>
+<dict>
+<key>Label</key><string>org.macports.gpsd</string>
+<key>ProgramArguments</key>
+<array>
+	<string>/opt/local/bin/daemondo</string>
+	<string>--label=gpsd</string>
+	<string>--start-cmd</string>
+	<string>/opt/local/sbin/gpsd</string>
+	<string>--passive</string>
+	<string>--speed</string>
+	<string>115200</string>
+	<string>--badtime</string>
+	<string>--nowait</string>
+	<string>-P</string>
+	<string>/opt/local/var/run/gpsd.pid</string>
+	<string>/dev/cu.usbmodem1101</string>
+	<string>;</string>
+	<string>--restart-netchange</string>
+	<string>--pid=exec</string>
+</array>
+<key>Disabled</key><true/>
+<key>KeepAlive</key><true/>
+</dict>
+</plist>

@@ -31,7 +31,7 @@ service_exists() {
 disable() {
     case "$(uname -s)" in
         FreeBSD) sysrc -c ntpd_enable=NO || sysrc ntpd_enable=NO ;;
-        Darwin) sudo port unload ntpsec ;;
+        Darwin) sudo port uninstall ntpsec ;;
         Linux)
             if systemctl is-enabled ntpsec.service &>/dev/null; then
                 sudo systemctl disable --now ntpsec.service

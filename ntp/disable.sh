@@ -30,7 +30,7 @@ service_exists() {
 stop() {
     case "$(uname -s)" in
         FreeBSD) service ntpd onestop ;;
-        Darwin) ;;
+        Darwin) sudo port unload ntp ;;
         Linux) systemctl stop ntpd ;;
         *)
             echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
@@ -42,7 +42,7 @@ stop() {
 disable() {
     case "$(uname -s)" in
         FreeBSD) sysrc -c ntpd_enable=NO || sysrc ntpd_enable=NO ;;
-        Darwin) port unload ntpd ;;
+        Darwin) port uninstall ntp ;;
         Linux)
             if systemctl is-enabled ntpd.service &>/dev/null; then
                 sudo systemctl disable --now ntpd.service
