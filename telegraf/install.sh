@@ -124,7 +124,7 @@ is_running()
 
 enable_chrony()
 {
-	sed -i \
+	sed -i '' \
 		-e '/^#\[\[inputs.chrony/ s/^#//' \
 		-e '/:323/ s/#//g' \
 		-e '/metrics.*sources/ s/#//g' \
@@ -135,7 +135,7 @@ enable_chrony()
 
 enable_ntpd()
 {
-	sed -i \
+	sed -i '' \
 		-e '/^#\[\[inputs.ntpq/ s/^#//g' \
 		-e '/-c peers/ s/#//g' \
 		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \

@@ -249,7 +249,7 @@ telegraf()
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
 
     echo -n "Configuring Telegraf for ntp..."
-	sed -i \
+	sed -i '' \
 		-e '/^#\[\[inputs.ntpq/ s/^#//g' \
 		-e '/-c peers/ s/#//g' \
 		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
