@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+"http://www.apple.com/DTDs/PropertyList-1.0.dtd" >
+<plist version='1.0'>
+<dict>
+<key>Label</key><string>org.macports.ntpsec</string>
+<key>ProgramArguments</key>
+<array>
+	<string>/opt/local/bin/daemondo</string>
+	<string>--label=ntpsec</string>
+	<string>--start-cmd</string>
+	<string>/opt/local/sbin/ntpd</string>
+	<string>-n</string>
+	<string>-g</string>
+	<string>-p</string>
+	<string>/opt/local/var/run/ntpd.pid</string>
+	<string>-f</string>
+	<string>/opt/local/var/db/ntp.drift</string>
+	<string>-c</string>
+	<string>/opt/local/etc/ntp.conf</string>
+	<string>-l</string>
+	<string>/opt/local/var/log/ntp.log</string>
+	<string>;</string>
+	<string>--restart-netchange</string>
+	<string>--pid=exec</string>
+</array>
+<key>Disabled</key><true/>
+<key>KeepAlive</key><true/>
+</dict>
+</plist>

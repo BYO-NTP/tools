@@ -1,9 +1,9 @@
 #!/bin/sh
 
+# By Matt Simerson - 2025-06
+
 set -e
 
-TG_ETC_DIR="/usr/local/etc"
-FETCH="fetch -o"
 TOOLS_URI="https://byo-ntp.github.io/tools"
 
 install_telegraf_freebsd()
@@ -53,6 +53,20 @@ EOF
 	systemctl daemon-reload
 
 	echo 'TELEGRAF_OPTS="--debug"' > /etc/default/telegraf
+}
+
+install_telegraf_darwin()
+{
+	port install telegraf
+
+	mkdir -p /opt/local/var/log/telegraf /opt/local/var/run/telegraf
+	chown telegraf:telegraf /opt/local/var/run/telegraf \
+		/opt/local/var/log/telegraf
+
+	$FETCH /Library/LaunchDaemons/org.macports.telegraf.plist \
+		"$TOOLS_URI/telegraf/org.macports.telegraf.plist"
+
+	port load telegraf
 }
 
 install_temperature()
@@ -108,35 +122,34 @@ is_running()
 	esac
 }
 
+enable_chrony()
+{
+	sed -i \
+		-e '/^#\[\[inputs.chrony/ s/^#//' \
+		-e '/:323/ s/#//g' \
+		-e '/metrics.*sources/ s/#//g' \
+		-e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
+		-e '/-c peers/ s/options/#options/' \
+		"$TG_ETC_DIR/telegraf.conf"
+}
+
+enable_ntpd()
+{
+	sed -i \
+		-e '/^#\[\[inputs.ntpq/ s/^#//g' \
+		-e '/-c peers/ s/#//g' \
+		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
+		-e '/:323/ s/server/#server/' \
+		-e '/metrics.*sources/ s/metrics/#metrics/' \
+		"$TG_ETC_DIR/telegraf.conf"
+}
+
 configure_ntpd()
 {
 	if is_running chronyd; then
-		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOFC
-
-#[[inputs.ntpq]]
-
-[[inputs.chrony]]
-  server = "udp://[::1]:323"
-  metrics = ["tracking", "sources", "sourcestats"]
-EOFC
-	elif is_running ntp; then
-		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOFQ
-
-[[inputs.ntpq]]
-
-#[[inputs.chrony]]
-#  server = "udp://[::1]:323"
-#  metrics = ["tracking", "sources", "sourcestats"]
-EOFQ
-	else
-		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOFZ
-
-#[[inputs.ntpq]]
-
-#[[inputs.chrony]]
-#  server = "udp://[::1]:323"
-#  metrics = ["tracking", "sources", "sourcestats"]
-EOFZ
+		enable_chrony
+	elif is_running ntpd; then
+		enable_ntpd
 	fi
 }
 
@@ -161,17 +174,23 @@ fi
 
 case "$(uname -s)" in
 	FreeBSD)
+		FETCH="fetch -o"
+		TG_ETC_DIR="/usr/local/etc"
 		install_temperature
 		install_telegraf_freebsd
 		install_telegraf_conf
 		;;
 	Linux) 
-		TG_ETC_DIR="/etc/telegraf"
 		FETCH="curl -o"
+		TG_ETC_DIR="/etc/telegraf"
 		install_temperature
 		install_telegraf_linux
 		install_telegraf_conf
 		;;
+	Darwin)
+		FETCH="curl -o"
+		TG_ETC_DIR="/opt/local/etc/telegraf"
+		install_telegraf_darwin
 	*)
 		echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
 		exit 1

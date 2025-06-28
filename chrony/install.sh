@@ -3,6 +3,9 @@
 # By Matt Simerson - 2025-05-20
 #
 # This script installs and configures chrony
+# 
+# it is typically run like this:
+#   curl -sS https://byo-ntp.github.io/tools/chrony/install.sh | sh
 
 set -e 
 
@@ -102,9 +105,15 @@ dumpdir /var/db/chrony
 EOBSD
         )"
         ;;
-    *)
-        echo "Unsupported OS: $(uname -s)"
-        exit 1
+    Darwin)
+        CHRONY_ERRATA="$(cat <<EOMAC
+makestep 30 3
+driftfile /opt/local/var/run/chrony/drift
+dumpdir /opt/local/var/run/chrony
+ntsdumpdir /opt/local/var/run/chrony
+rtcsync
+EOMAC
+        )"
         ;;
     esac
 }
@@ -131,6 +140,22 @@ allow all
 EO_CHRONY
 }
 
+is_running()
+{
+	case "$(uname -s)" in
+		FreeBSD|Darwin) pgrep -q "$1" ;;
+		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+	esac
+}
+
+stop() {
+    case "$(uname -s)" in
+        FreeBSD) service chronyd onestop ;;
+        Darwin) sudo port unload chrony ;;
+        Linux) systemctl stop chrony ;;
+    esac
+}
+
 install_chrony_freebsd()
 {
     if [ ! -x "/usr/local/sbin/chronyd" ]; then
@@ -148,6 +173,7 @@ install_chrony_linux()
 {
     if ! dpkg -s chrony | grep -q "ok installed"; then
         apt install -y chrony
+        if is_running chrony; then stop; fi
     fi
 
     chown _chrony:_chrony /var/log/chrony
@@ -168,7 +194,7 @@ set_platform_vars()
             ;;
         Darwin)
             NTP_ETC_DIR="/opt/local/etc"
-            NTP_LOG_DIR="/usr/local/var/ntp"
+            NTP_LOG_DIR="/opt/local/var/log/chrony"
             ;;
     esac
 }
@@ -182,10 +208,7 @@ install() {
     case "$(uname -s)" in
         Linux)   install_chrony_linux ;;
         FreeBSD) install_chrony_freebsd ;;
-        *)
-            echo "Unsupported OS: $(uname -s)"
-            exit 1
-            ;;
+        Darwin)  sudo port install chrony ;;
     esac
 }
 
@@ -193,12 +216,39 @@ start() {
     case "$(uname -s)" in
         Linux) service chrony start ;;
         FreeBSD) service chronyd start ;;
-        *)
-            echo "Unsupported OS: $(uname -s)"
-            exit 1
-            ;;
+        Darwin) sudo port load chrony ;;
     esac
 }
+
+telegraf()
+{
+    case "$(uname -s)" in
+        FreeBSD) TG_ETC_DIR="/usr/local/etc" ;;
+        Linux)   TG_ETC_DIR="/etc/telegraf"  ;;
+        Darwin)  TG_ETC_DIR="/opt/local/etc/telegraf" ;;
+    esac
+
+    if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
+
+    echo -n "Configuring Telegraf for chrony..."
+	sed -i \
+		-e '/^#\[\[inputs.chrony/ s/^#//' \
+		-e '/:323/ s/#//g' \
+		-e '/metrics.*sources/ s/#//g' \
+		-e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
+		-e '/-c peers/ s/options/#options/' \
+		"$TG_ETC_DIR/telegraf.conf"
+
+    echo "done"
+}
+
+case "$(uname -s)" in
+    Darwin|FreeBSD|Linux) ;;
+    *)
+        echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+        exit 1
+    ;;
+esac
 
 set_platform_vars
 curl -sS https://byo-ntp.github.io/tools/ntpsec/disable.sh | sh
@@ -206,3 +256,4 @@ curl -sS https://byo-ntp.github.io/tools/ntp/disable.sh | sh
 install
 configure
 start
+telegraf

@@ -3,6 +3,9 @@
 # By Matt Simerson - 2025-05-19
 #
 # This script installs (if needed) and configures ntpd
+# it is typically run like this:
+#
+#  curl -sS https://byo-ntp.github.io/tools/ntp/install.sh | sh
 
 set -e
 
@@ -250,9 +253,40 @@ start() {
     esac
 }
 
+telegraf()
+{
+    case "$(uname -s)" in
+        FreeBSD) TG_ETC_DIR="/usr/local/etc" ;;
+        Linux)   TG_ETC_DIR="/etc/telegraf"  ;;
+        Darwin)  TG_ETC_DIR="/opt/local/etc/telegraf" ;;
+    esac
+
+    if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
+
+    echo -n "Configuring Telegraf for ntp..."
+	sed -i \
+		-e '/^#\[\[inputs.ntpq/ s/^#//g' \
+		-e '/-c peers/ s/#//g' \
+		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
+		-e '/:323/ s/server/#server/' \
+		-e '/metrics.*sources/ s/metrics/#metrics/' \
+		"$TG_ETC_DIR/telegraf.conf"
+
+    echo "done"
+}
+
+case "$(uname -s)" in
+    Darwin|FreeBSD|Linux) ;;
+    *)
+        echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+        exit 1
+    ;;
+esac
+
 set_platform_vars
 curl -sS https://byo-ntp.github.io/tools/chrony/disable.sh | sh
 curl -sS https://byo-ntp.github.io/tools/ntpsec/disable.sh | sh
 install
 configure
 start
+telegraf

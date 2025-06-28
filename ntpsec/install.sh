@@ -3,6 +3,9 @@
 # By Matt Simerson - 2025-05-18
 #
 # This script installs and configures NTPsec
+# 
+# it is typically run like this:
+#   curl -sS https://byo-ntp.github.io/tools/ntpsec/install.sh | sh
 
 set -e
 
@@ -131,8 +134,52 @@ set_platform_vars()
         Darwin)
             NTP_ETC_DIR="/opt/local/etc"
             NTP_LOG_DIR="/usr/local/var/ntp"
+            NTP_DRIFTFILE="/opt/local/var/db/ntp.drift"
+            NTP_LEAPFILE="/opt/local/var/db/leapfile"
             ;;
     esac
+}
+
+install_debian_source() {
+    # rebuilding NTPsec is required to get gpsd refclock support
+    # because https://gitlab.com/NTPsec/ntpsec/-/issues/668
+    cd
+    command -v git >/dev/null || apt install -y git
+    if [ ! -d ntpsec ]; then
+        git clone --depth=1 https://github.com/ntpsec/ntpsec.git
+        cd ntpsec
+    else
+        cd ntpsec && git pull
+    fi
+
+    export PYTHONPATH=/usr/local/lib/python3.11/site-packages
+    ./buildprep
+    ./waf configure --refclock=local,nmea,pps,shm,gpsd \
+        --pythondir=/usr/local/lib/python3.11/dist-packages \
+        --pythonarchdir=/usr/local/lib/python3.11/dist-packages
+    ./waf build
+    ./waf install
+}
+
+is_running()
+{
+	case "$(uname -s)" in
+		FreeBSD|Darwin) pgrep -q "$1" ;;
+		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+	esac
+}
+
+stop() {
+    case "$(uname -s)" in
+        FreeBSD) service ntpd onestop ;;
+        Darwin) sudo port unload ntpsec ;;
+        Linux) systemctl stop ntpsec ;;
+    esac
+}
+
+install_debian_apt() {
+    apt install -y ntpsec
+    if is_running ntpd; then stop; fi
 }
 
 install() {
@@ -147,8 +194,10 @@ install() {
 
     case "$(uname -s)" in
         Linux)
-            apt install -y ntpsec
-            systemctl stop ntpsec
+            case "$NTP_REFCLOCKS" in
+                *'refclock gpsd'*) install_debian_source ;;
+                *)                 install_debian_apt ;;
+            esac
             ;;
         FreeBSD)
             pkg install -y ntpsec
@@ -159,11 +208,7 @@ install() {
             id ntpd | grep -q dialer || pw groupmod dialer -m ntpd
             ;;
         Darwin)
-            port install ntpsec
-            ;;
-        *)
-            echo "Unsupported OS: $(uname -s)"
-            exit 1
+            port install ntpsec +refclock
             ;;
     esac
 }
@@ -189,15 +234,38 @@ start() {
 
             service ntpd start
             ;;
-        Darwin)
-            port load ntpsec
-            ;;
-        *)
-            echo "Unsupported OS: $(uname -s)"
-            exit 1
-            ;;
+        Darwin) sudo port load ntpsec ;;
     esac
 }
+
+telegraf()
+{
+    case "$(uname -s)" in
+        FreeBSD) TG_ETC_DIR="/usr/local/etc" ;;
+        Linux)   TG_ETC_DIR="/etc/telegraf"  ;;
+        Darwin)  TG_ETC_DIR="/opt/local/etc/telegraf" ;;
+    esac
+
+    if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
+
+    echo -n "Configuring Telegraf for ntp..."
+	sed -i \
+		-e '/^#\[\[inputs.ntpq/ s/^#//g' \
+		-e '/-c peers/ s/#//g' \
+		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
+		-e '/:323/ s/server/#server/' \
+		-e '/metrics.*sources/ s/metrics/#metrics/' \
+		"$TG_ETC_DIR/telegraf.conf"
+
+    echo "done"
+}
+
+case "$(uname -s)" in
+    Darwin|FreeBSD|Linux) ;;
+    *)  echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+        exit 1
+    ;;
+esac
 
 set_platform_vars
 curl -sS https://byo-ntp.github.io/tools/chrony/disable.sh | sh
@@ -205,3 +273,4 @@ curl -sS https://byo-ntp.github.io/tools/ntp/disable.sh | sh
 install
 configure
 start
+telegraf

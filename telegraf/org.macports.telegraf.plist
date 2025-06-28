@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.macports.telegraf</string>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>Disabled</key>
+    <false/>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>SessionCreate</key>
+    <true/>
+    <key>LaunchOnlyOnce</key>
+    <false/>
+    <key>UserName</key>
+    <string>telegraf</string>
+    <key>GroupName</key>
+    <string>telegraf</string>
+    <key>ExitTimeOut</key>
+    <integer>600</integer>
+    <key>ProgramArguments</key>
+        <array>
+            <string>/opt/local/bin/telegraf</string>
+            <string>--config-directory</string>
+            <string>/opt/local/etc/telegraf</string>
+            <string>--pidfile</string>
+            <string>/opt/local/var/run/telegraf/telegraf.pid</string>
+        </array>
+    <key>StandardErrorPath</key>
+    <string>/opt/local/var/log/telegraf/telegraf.log</string>
+    <key>StandardOutPath</key>
+    <string>/opt/local/var/log/telegraf/telegraf.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TELEGRAF_CONFIG_PATH</key>
+        <string>@CONF_FILE@</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:/opt/local/bin:/opt/local/sbin</string>
+    </dict>
+</dict>
+</plist>
