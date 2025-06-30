@@ -86,8 +86,10 @@ get_errata() {
     case "$(uname -s)" in
     Linux)
         CHRONY_ERRATA="$(cat <<EOLINUX
+minsamples 16
 keyfile /etc/chrony/chrony.keys
 driftfile /var/lib/chrony/chrony.drift
+dumpdir /var/lib/chrony
 ntsdumpdir /var/lib/chrony
 
 maxupdateskew 100.0
@@ -99,14 +101,16 @@ EOLINUX
         ;;
     FreeBSD)
         CHRONY_ERRATA="$(cat <<EOBSD
+minsamples 16
 driftfile /var/db/chrony/drift
-ntsdumpdir /var/db/chrony
 dumpdir /var/db/chrony
+ntsdumpdir /var/db/chrony
 EOBSD
         )"
         ;;
     Darwin)
         CHRONY_ERRATA="$(cat <<EOMAC
+minsamples 16
 makestep 30 3
 driftfile /opt/local/var/run/chrony/drift
 dumpdir /opt/local/var/run/chrony
