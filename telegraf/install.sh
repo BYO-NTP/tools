@@ -191,6 +191,7 @@ case "$(uname -s)" in
 		FETCH="curl -o"
 		TG_ETC_DIR="/opt/local/etc/telegraf"
 		install_telegraf_darwin
+		;;
 	*)
 		echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
 		exit 1

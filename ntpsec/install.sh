@@ -9,11 +9,12 @@
 
 set -e
 
+HOSTNAME=$(hostname)
+DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
+
 get_servers_via_dns() {
     # use DNS to customize the NTP servers. For details see
     # https://byo-ntp.github.io/srv-lookup.html
-    HOSTNAME=$(hostname)
-    DOMAIN=$(echo $HOSTNAME | sed 's/^[^.]*\.//')
 
     if [ -x "/usr/bin/dig" ]; then   # dig from dnsutils
         SRV_RECORDS=$(dig +short _ntp._udp."$DOMAIN" SRV)
@@ -63,7 +64,7 @@ assure_dnsutil()
 conf_ntp_servers()
 {
     assure_dnsutil
-    echo "Discovering NTP servers via DNS SRV records..."
+    echo "Discovering NTP servers for $DOMAIN via DNS SRV records..."
     NTP_SERVERS=$(get_servers_via_dns)
 
     if [ -z "$NTP_SERVERS" ]; then
