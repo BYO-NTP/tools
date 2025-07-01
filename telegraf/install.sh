@@ -126,7 +126,7 @@ enable_chrony()
 		-e '/:323/ s/#//g' \
 		-e '/metrics.*sources/ s/#//g' \
 		-e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
-		-e '/-c peers/ s/options/#options/' \
+		-e '/-n -p/ s/ options/ #options/' \
 		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
 	mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 }
@@ -135,7 +135,7 @@ enable_ntpd()
 {
 	echo "Enabling ntpq in Telegraf configuration..."
 	sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
-		-e '/-c peers/ s/#//g' \
+		-e '/-n -p/ s/#//g' \
 		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
 		-e '/:323/ s/server/#server/' \
 		-e '/metrics.*sources/ s/metrics/#metrics/' \
@@ -166,7 +166,6 @@ install_telegraf_conf()
 		sed -e "/INFLUX/ s/INFLUX_SERVER/$INFLUX_DB_HOST/" \
 			"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
 		mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
-	else
 	fi
 
 	configure_ntpd
