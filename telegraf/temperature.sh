@@ -1,6 +1,9 @@
 #!/bin/sh
 
 # 2025-05-01 by Matt Simerson <matt@tnpi.net>
+#
+# CPU frequency changes and temperature fluctuations (of the crystal
+# or oscillator) can significantly affect the system clocks precision.
 
 HOSTNAME="$(hostname)"
 

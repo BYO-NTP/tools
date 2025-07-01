@@ -47,5 +47,7 @@ case "$(uname -s)" in
     ;;
 esac
 
-if is_running ntpd; then stop; fi
-if service_exists; then disable; fi
+if service_exists; then
+    if is_running ntpd; then stop; fi
+    disable
+fi
