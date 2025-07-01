@@ -49,7 +49,8 @@ EOF
 		ln -s /etc/systemd/system/telegraf.service $SERVICEFILE
 	fi
 
-	sed -i -e '/LimitMEMLOCK/ s/Limit/#Limit/' "$SERVICEFILE"
+	sed -e '/LimitMEMLOCK/ s/Limit/#Limit/' "$SERVICEFILE" > "$SERVICEFILE.new"
+	mv -- "$SERVICEFILE.new" "$SERVICEFILE"
 	systemctl daemon-reload
 
 	echo 'TELEGRAF_OPTS="--debug"' > /etc/default/telegraf
@@ -82,7 +83,8 @@ configure_temperature()
 	for i in cpu gpu disk; do
 		OUT=$(/usr/local/sbin/temperature.sh $i)
 		if [ -n "$OUT" ]; then
-			cat >> "$TG_ETC_DIR/telegraf.conf" <<EOF
+			if ! grep -q "temperature.sh $i" "$TG_ETC_DIR/telegraf.conf"; then
+				cat >> "$TG_ETC_DIR/telegraf.conf" <<EOF
 
 [[inputs.exec]]
   interval = "30s"
@@ -90,12 +92,14 @@ configure_temperature()
   name_override = "$i"
   data_format = "influx"
 EOF
+			fi
 		fi
 	done
 
 	OUT=$(/usr/local/sbin/temperature.sh freq)
 	if [ -n "$OUT" ]; then
-		cat >> "$TG_ETC_DIR/telegraf.conf" <<EOF
+		if ! grep -q "temperature.sh freq" "$TG_ETC_DIR/telegraf.conf"; then
+			cat >> "$TG_ETC_DIR/telegraf.conf" <<EOF
 
 [[inputs.exec]]
   interval = "10s"
@@ -103,45 +107,40 @@ EOF
   name_override = "cpu"
   data_format = "influx"
 EOF
+		fi
 	fi
 }
 
 is_running()
 {
 	case "$(uname -s)" in
-		FreeBSD|Darwin)
-			pgrep -q "$1"
-		;;
-		Linux)
-			pgrep -c "$1" > /dev/null 2>&1
-		;;
-		*)
-			echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
-			exit 1
-		;;
+		FreeBSD|Darwin) pgrep -q "$1" ;;
+		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
 	esac
 }
 
 enable_chrony()
 {
-	sed -i '' \
-		-e '/^#\[\[inputs.chrony/ s/^#//' \
+	echo "Enabling chrony in Telegraf configuration..."
+	sed -e '/^#\[\[inputs.chrony/ s/^#//' \
 		-e '/:323/ s/#//g' \
 		-e '/metrics.*sources/ s/#//g' \
 		-e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
 		-e '/-c peers/ s/options/#options/' \
-		"$TG_ETC_DIR/telegraf.conf"
+		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
+	mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 }
 
 enable_ntpd()
 {
-	sed -i '' \
-		-e '/^#\[\[inputs.ntpq/ s/^#//g' \
+	echo "Enabling ntpq in Telegraf configuration..."
+	sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
 		-e '/-c peers/ s/#//g' \
 		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
 		-e '/:323/ s/server/#server/' \
 		-e '/metrics.*sources/ s/metrics/#metrics/' \
-		"$TG_ETC_DIR/telegraf.conf"
+		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
+	mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 }
 
 configure_ntpd()
@@ -155,12 +154,19 @@ configure_ntpd()
 
 install_telegraf_conf()
 {
-	$FETCH - "$TOOLS_URI/telegraf/telegraf.conf" \
-		| sed -e "/hostname/ s/time.example.com/$(hostname)/" \
-		> "$TG_ETC_DIR/telegraf.conf"
+	if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then
+		echo "Installing $TG_ETC_DIR/telegraf.conf"
+		$FETCH - "$TOOLS_URI/telegraf/telegraf.conf" \
+			| sed -e "/hostname/ s/time.example.com/$(hostname)/" \
+			> "$TG_ETC_DIR/telegraf.conf"
+	fi
 
-	if [ -n "$INFLUX_DB_HOST" ]; then
-		sed -i -e "/INFLUX/ s/INFLUX_SERVER/$INFLUX_DB_HOST/" "$TG_ETC_DIR/telegraf.conf"
+	if [ -n "$INFLUX_DB_HOST" ] && grep -q INFLUX_SERVER "$TG_ETC_DIR/telegraf.conf"; then
+		echo "Configuring Telegraf for InfluxDB at $INFLUX_DB_HOST..."
+		sed -e "/INFLUX/ s/INFLUX_SERVER/$INFLUX_DB_HOST/" \
+			"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
+		mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
+	else
 	fi
 
 	configure_ntpd
