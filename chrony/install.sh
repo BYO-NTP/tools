@@ -236,13 +236,13 @@ telegraf()
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
 
     echo -n "Configuring Telegraf for chrony..."
-	sed -i '' \
-		-e '/^#\[\[inputs.chrony/ s/^#//' \
+	sed -e '/^#\[\[inputs.chrony/ s/^#//' \
 		-e '/:323/ s/#//g' \
 		-e '/metrics.*sources/ s/#//g' \
 		-e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
 		-e '/-c peers/ s/options/#options/' \
-		"$TG_ETC_DIR/telegraf.conf"
+		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
+    mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 
     echo "done"
 }

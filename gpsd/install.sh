@@ -31,6 +31,8 @@ install_freebsd() {
     if [ -L "/dev/pps0" ]; then sysrc gpsd_devices+=" /dev/pps0"; fi
     sysrc gpsd_flags="--passive --speed 115200 --badtime --nowait"
     pkg install -y gpsd-nox11
+    pw groupmod dialer -m nobody
+
     if is_running gpsd; then
         service gpsd restart
     else

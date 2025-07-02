@@ -250,13 +250,13 @@ telegraf()
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
 
     echo -n "Configuring Telegraf for ntp..."
-	sed -i '' \
-		-e '/^#\[\[inputs.ntpq/ s/^#//g' \
+	sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
 		-e '/-c peers/ s/#//g' \
 		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
 		-e '/:323/ s/server/#server/' \
 		-e '/metrics.*sources/ s/metrics/#metrics/' \
-		"$TG_ETC_DIR/telegraf.conf"
+		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
+    mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 
     echo "done"
 }
