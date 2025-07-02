@@ -121,21 +121,21 @@ is_running()
 
 enable_chrony()
 {
+		# -e '/-n -p/ s/ options/ #options/' \
 	echo "Enabling chrony in Telegraf configuration..."
 	sed -e '/^#\[\[inputs.chrony/ s/^#//' \
 		-e '/:323/ s/#//g' \
 		-e '/metrics.*sources/ s/#//g' \
 		-e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
-		# -e '/-n -p/ s/ options/ #options/' \
 		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
 	mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 }
 
 enable_ntpd()
 {
+		# -e '/-n -p/ s/#//g' \
 	echo "Enabling ntpq in Telegraf configuration..."
 	sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
-		# -e '/-n -p/ s/#//g' \
 		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
 		-e '/:323/ s/server/#server/' \
 		-e '/metrics.*sources/ s/metrics/#metrics/' \
