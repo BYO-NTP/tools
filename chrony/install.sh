@@ -147,10 +147,10 @@ EO_CHRONY
 
 is_running()
 {
-	case "$(uname -s)" in
-		FreeBSD|Darwin) pgrep -q "$1" ;;
-		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
-	esac
+    case "$(uname -s)" in
+        FreeBSD|Darwin) pgrep -q "$1" ;;
+        Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+    esac
 }
 
 stop() {
@@ -235,16 +235,32 @@ telegraf()
 
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
 
+    if grep -q '^\[\[inputs.chrony\]\]' "$TG_ETC_DIR/telegraf.conf"; then
+        # telegraf is already configured for chrony.
+        return
+    fi
+
     echo -n "Configuring Telegraf for chrony..."
-	sed -e '/^#\[\[inputs.chrony/ s/^#//' \
-		-e '/:323/ s/#//g' \
-		-e '/metrics.*sources/ s/#//g' \
-		-e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
-		-e '/-c peers/ s/options/#options/' \
-		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
+    sed -e '/^#\[\[inputs.chrony/ s/^#//' \
+        -e '/:323/ s/#//g' \
+        -e '/metrics.*sources/ s/#//g' \
+        -e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
+        -e '/-c peers/ s/options/#options/' \
+        -e '/-n -p/ s/\soptions/#options/' \
+        "$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
     mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 
     echo "done"
+
+    if is_running telegraf; then
+        echo "Restarting Telegraf to pick up changes..."
+        case "$(uname -s)" in
+            FreeBSD|Linux) service telegraf restart ;;
+            Darwin)  sudo port reload telegraf ;;
+        esac
+    else
+        echo "Telegraf is not running."
+    fi
 }
 
 case "$(uname -s)" in

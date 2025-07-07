@@ -164,10 +164,10 @@ install_debian_source() {
 
 is_running()
 {
-	case "$(uname -s)" in
-		FreeBSD|Darwin) pgrep -q "$1" ;;
-		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
-	esac
+    case "$(uname -s)" in
+        FreeBSD|Darwin) pgrep -q "$1" ;;
+        Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+    esac
 }
 
 stop() {
@@ -249,16 +249,31 @@ telegraf()
 
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
 
-    echo -n "Configuring Telegraf for ntp..."
-	sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
-		-e '/-c peers/ s/#//g' \
-		-e '/^\[\[inputs.chrony/ s/^\[/#[/' \
-		-e '/:323/ s/server/#server/' \
-		-e '/metrics.*sources/ s/metrics/#metrics/' \
-		"$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
-    mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
+    if grep -q '^\[\[inputs.ntpq\]\]' "$TG_ETC_DIR/telegraf.conf"; then
+        echo "telegraf is already configured for ntpd."
+        return
+    fi
 
+    echo -n "Configuring Telegraf for ntp..."
+    sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
+        -e '/options.*peers/ s/#//g' \
+        -e '/options.*-p/ s/#//g' \
+        -e '/^\[\[inputs.chrony/ s/^\[/#[/' \
+        -e '/:323/ s/server/#server/' \
+        -e '/metrics.*sources/ s/metrics/#metrics/' \
+        "$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
+    mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
     echo "done"
+
+    if is_running telegraf; then
+        echo "Restarting telegraf to pick up changes."
+        case "$(uname -s)" in
+            FreeBSD|Linux) service telegraf restart ;;
+            Darwin)  sudo port reload telegraf ;;
+        esac
+    else
+        echo "telegraf is not running."
+    fi
 }
 
 case "$(uname -s)" in
