@@ -4,7 +4,7 @@
 
 usage()
 {
-	cat <<EOF
+    cat <<EOF
 Usage: $0 [peer name] [ntp|chrony|logfile]
 
 Options:
@@ -18,57 +18,53 @@ $0 127.127.20 ntp
 $0 127.127.22 /var/log/ntp/peerstats.#3234
 
 EOF
-	exit 1
+    exit 1
 }
 
 if [ -z "$1" ]; then usage; fi
 
 is_running()
 {
-	case "$(uname -s)" in
-		FreeBSD|Darwin)
-			pgrep -q "$1"
-		;;
-		Linux)
-			pgrep -c "$1" > /dev/null 2>&1
-		;;
-		*)
-			echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
-			exit 1
-		;;
-	esac
+    case "$(uname -s)" in
+        FreeBSD|Darwin) pgrep -q "$1" ;;
+        Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+        *)
+            echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+            exit 1
+        ;;
+    esac
 }
 
 which_log_file()
 {
-	if [ -f "$1" ]; then
-		LOGFILE="$1"
-		return
-	fi
+    if [ -f "$1" ]; then
+        LOGFILE="$1"
+        return
+    fi
 
-	if is_running chronyd;
-	then
-		LOGFILE="/var/log/chrony/statistics.log"
-	elif is_running ntp;
-	then
-		if [ -f "/var/log/ntp/peerstats" ]; then
-			LOGFILE="/var/log/ntp/peerstats"
-		elif [ -f "/var/log/ntpsec/peerstats" ]; then
-			LOGFILE="/var/log/ntpsec/peerstats"
-		else
-			echo "ERR: ntpd is running but files cannot be found, is statistics enabled?"
-		fi
-	fi
+    if is_running chronyd;
+    then
+        LOGFILE="/var/log/chrony/statistics.log"
+    elif is_running ntp;
+    then
+        if [ -f "/var/log/ntp/peerstats" ]; then
+            LOGFILE="/var/log/ntp/peerstats"
+        elif [ -f "/var/log/ntpsec/peerstats" ]; then
+            LOGFILE="/var/log/ntpsec/peerstats"
+        else
+            echo "ERR: ntpd is running but files cannot be found, is statistics enabled?"
+        fi
+    fi
 
-	if [ -z "$LOGFILE" ] || [ ! -f "$LOGFILE" ];
-	then
-		case "$1" in
-			ntp)    LOGFILE="/var/log/ntp/peerstats" ;;
-			ntpsec) LOGFILE="/var/log/ntpsec/peerstats" ;;
-			chrony) LOGFILE="/var/log/chrony/statistics.log" ;;
-			*)      usage ;;
-		esac
-	fi
+    if [ -z "$LOGFILE" ] || [ ! -f "$LOGFILE" ];
+    then
+        case "$1" in
+            ntp)    LOGFILE="/var/log/ntp/peerstats" ;;
+            ntpsec) LOGFILE="/var/log/ntpsec/peerstats" ;;
+            chrony) LOGFILE="/var/log/chrony/statistics.log" ;;
+            *)      usage ;;
+        esac
+    fi
 }
 
 which_log_file "$2"

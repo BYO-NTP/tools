@@ -10,14 +10,14 @@ TOOLS_URI="https://byo-ntp.github.io/tools"
 
 is_running()
 {
-	case "$(uname -s)" in
-		FreeBSD|Darwin) pgrep -q "$1" ;;
-		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
-		*)
-			echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
-			exit 1
-		;;
-	esac
+    case "$(uname -s)" in
+        FreeBSD|Darwin) pgrep -q "$1" ;;
+        Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+        *)
+            echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+            exit 1
+        ;;
+    esac
 }
 
 install_freebsd() {
@@ -79,11 +79,11 @@ install_darwin() {
 }
 
 case "$(uname -s)" in
-	FreeBSD) install_freebsd ;;
-	Linux)   install_linux   ;;
-	Darwin)  install_darwin  ;;
-	*)
-		echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
-		exit 1
-	;;
+    FreeBSD) install_freebsd ;;
+    Linux)   install_linux   ;;
+    Darwin)  install_darwin  ;;
+    *)
+        echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+        exit 1
+    ;;
 esac

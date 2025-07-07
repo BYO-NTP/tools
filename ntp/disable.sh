@@ -5,17 +5,17 @@ set -e
 
 is_running()
 {
-	case "$(uname -s)" in
-		FreeBSD) pgrep -q ntpd ;;
+    case "$(uname -s)" in
+        FreeBSD) pgrep -q ntpd ;;
         Darwin)
             # pgrep ntpd can match for ntp and ntpsec
             test -f /Library/LaunchDaemons/org.macports.ntp.plist && pgrep -q ntpd ;;
-		Linux) pgrep -c ntpd > /dev/null 2>&1 ;;
-		*)
-			echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
-			exit 1
-		;;
-	esac
+        Linux) pgrep -c ntpd > /dev/null 2>&1 ;;
+        *)
+            echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
+            exit 1
+        ;;
+    esac
 }
 
 service_exists() {

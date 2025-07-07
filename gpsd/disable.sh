@@ -4,10 +4,10 @@
 
 is_running()
 {
-	case "$(uname -s)" in
-		FreeBSD|Darwin) pgrep -q "$1" ;;
-		Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
-	esac
+    case "$(uname -s)" in
+        FreeBSD|Darwin) pgrep -q "$1" ;;
+        Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+    esac
 }
 
 stop_gpsd() {
