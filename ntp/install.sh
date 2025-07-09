@@ -167,7 +167,7 @@ EOSYS
 build_from_source()
 {
     if [ -x "/usr/local/sbin/ntpd" ]; then return; fi
-    apt install -y libssl-dev
+    apt install -y libssl-dev pps-tools
     cd ~
     wget -c -N https://downloads.nwtime.org/ntp/4.2.8/ntp-4.2.8p18.tar.gz
     tar -xzf ntp-4.2.8p18.tar.gz
@@ -275,7 +275,7 @@ telegraf()
         -e '/options.*-p/ s/#//g' \
         -e '/^\[\[inputs.chrony/ s/^\[/#[/' \
         -e '/:323/ s/server/#server/' \
-        -e '/metrics.*sources/ s/[[:space:]]metrics/#metrics/' \
+        -e '/metrics.*sources/ s/[[:space:]]metrics/ #metrics/' \
         "$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
     mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
     echo "done"
