@@ -246,7 +246,7 @@ telegraf()
         -e '/metrics.*sources/ s/#//g' \
         -e '/^\[\[inputs.ntpq/ s/^\[/#[/' \
         -e '/-c peers/ s/options/#options/' \
-        -e '/-n -p/ s/\soptions/#options/' \
+        -e '/-n -p/ s/[[:space:]]options/#options/' \
         "$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
     mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
 

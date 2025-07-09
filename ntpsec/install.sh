@@ -260,7 +260,7 @@ telegraf()
         -e '/options.*-p/ s/#//g' \
         -e '/^\[\[inputs.chrony/ s/^\[/#[/' \
         -e '/:323/ s/server/#server/' \
-        -e '/metrics.*sources/ s/metrics/#metrics/' \
+        -e '/metrics.*sources/ s/[[:space:]]metrics/#metrics/' \
         "$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
     mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"
     echo "done"
