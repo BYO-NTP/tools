@@ -1,6 +1,6 @@
 <img src="https://byo-ntp.github.io/img/logo/BYO-NTP-logo.jpeg" alt="BYO-NTP logo" width="200"/>
 
-BYO-NTP is a resource for builders and aspiring builders of Network Time Protocol servers The project's main goal is to encourage new Stratum 1 NTP server builds. We do this by providing:
+BYO-NTP is a resource for builders and aspiring builders of Network Time Protocol servers. The project's main goal is to encourage new Stratum 1 NTP server builds. We do this by providing:
 
 1. easy to follow instructions
 2. timely information

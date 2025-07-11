@@ -254,6 +254,14 @@ start() {
     esac
 }
 
+is_running()
+{
+    case "$(uname -s)" in
+        FreeBSD|Darwin) pgrep -q "$1" ;;
+        Linux) pgrep -c "$1" > /dev/null 2>&1 ;;
+    esac
+}
+
 telegraf()
 {
     case "$(uname -s)" in
