@@ -160,6 +160,9 @@ install_debian_source() {
         --pythonarchdir=/usr/local/lib/python3.11/dist-packages
     ./waf build
     ./waf install
+
+    sed -i -e '/^DAEMON=/ s|/usr/sbin/ntpd|/usr/local/sbin/ntpd|' \
+        /usr/libexec/ntpsec/ntp-systemd-wrapper
 }
 
 is_running()
@@ -185,7 +188,7 @@ install_debian_apt() {
 
 install() {
     case "$NTP_REFCLOCKS" in
-        *'refclock gpsd'*)
+        *'refclock gpsd'*|*'refclock shm'*)
             curl -sS https://byo-ntp.github.io/tools/gpsd/install.sh | sh ;;
         *)  curl -sS https://byo-ntp.github.io/tools/gpsd/disable.sh | sh ;;
     esac
