@@ -75,7 +75,6 @@ install_temperature()
     test -d /usr/local/sbin || mkdir -p /usr/local/sbin
     $FETCH /usr/local/sbin/temperature.sh "$TOOLS_URI/telegraf/temperature.sh"
     chmod 755 /usr/local/sbin/temperature.sh
-    chmod +x /usr/local/sbin/temperature.sh
 }
 
 configure_temperature()
@@ -122,7 +121,7 @@ is_running()
 enable_chrony()
 {
         # -e '/-n -p/ s/ options/ #options/' \
-    echo "Enabling chrony in Telegraf configuration..."
+    echo "BYO-NTP: enabling chrony in telegraf configuration..."
     sed -e '/^#\[\[inputs.chrony/ s/^#//' \
         -e '/:323/ s/#//g' \
         -e '/metrics.*sources/ s/#//g' \
@@ -134,7 +133,7 @@ enable_chrony()
 enable_ntpd()
 {
         # -e '/-n -p/ s/#//g' \
-    echo "Enabling ntpq in Telegraf configuration..."
+    echo "BYO-NTP: enabling ntpq in telegraf config..."
     sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
         -e '/^\[\[inputs.chrony/ s/^\[/#[/' \
         -e '/:323/ s/server/#server/' \
@@ -155,14 +154,14 @@ configure_ntpd()
 install_telegraf_conf()
 {
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then
-        echo "Installing $TG_ETC_DIR/telegraf.conf"
+        echo "BYO-NTP: installing $TG_ETC_DIR/telegraf.conf"
         $FETCH - "$TOOLS_URI/telegraf/telegraf.conf" \
             | sed -e "/hostname/ s/time.example.com/$(hostname)/" \
             > "$TG_ETC_DIR/telegraf.conf"
     fi
 
     if [ -n "$INFLUX_DB_HOST" ] && grep -q INFLUX_SERVER "$TG_ETC_DIR/telegraf.conf"; then
-        echo "Configuring Telegraf for InfluxDB at $INFLUX_DB_HOST..."
+        echo "BYO-NTP: configuring telegraf for InfluxDB at $INFLUX_DB_HOST..."
         sed -e "/INFLUX/ s/INFLUX_SERVER/$INFLUX_DB_HOST/" \
             "$TG_ETC_DIR/telegraf.conf" > "$TG_ETC_DIR/telegraf.conf.new"
         mv -- "$TG_ETC_DIR/telegraf.conf.new" "$TG_ETC_DIR/telegraf.conf"

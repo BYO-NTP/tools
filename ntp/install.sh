@@ -167,8 +167,10 @@ EOSYS
 build_from_source()
 {
     if [ -x "/usr/local/sbin/ntpd" ]; then return; fi
+    echo "BYO-NTP: installing NTP prerequisites."
     apt install -y libssl-dev pps-tools
     cd ~
+    echo "BYO-NTP: building NTP from source."
     wget -c -N https://downloads.nwtime.org/ntp/4.2.8/ntp-4.2.8p18.tar.gz
     tar -xzf ntp-4.2.8p18.tar.gz
     cd ntp-4.2.8p18
@@ -215,11 +217,15 @@ install() {
             ;;
         FreeBSD)
             # ntpd is installed by default, just enable it
+            echo "BYO-NTP: configuring ntpd."
             sysrc ntpd_program="/usr/sbin/ntpd"
             sysrc ntpd_config="$NTP_ETC_DIR/ntp.conf"
             sysrc ntpdate_config="$NTP_ETC_DIR/ntp.conf"
-            # Grant ntpd access to serial devices by adding to the dialer group
-            id ntpd | grep -q dialer || pw groupmod dialer -m ntpd
+
+            if  ! id ntpd | grep -q dialer; then
+                echo "BYO-NTP: granting ntpd access to serial devices"
+                pw groupmod dialer -m ntpd
+            fi
             ;;
         Darwin)
             ;;
@@ -273,11 +279,11 @@ telegraf()
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
 
     if grep -q '^\[\[inputs.ntpq\]\]' "$TG_ETC_DIR/telegraf.conf"; then
-        echo "telegraf is already configured for ntpd."
+        echo "BYO-NTP: telegraf is already configured for ntpd."
         return
     fi
 
-    echo -n "Configuring telegraf for ntp..."
+    echo -n "BYO-NTP: configuring telegraf for ntp..."
     sed -e '/^#\[\[inputs.ntpq/ s/^#//g' \
         -e '/options.*-c peers/ s/#//g' \
         -e '/options.*-p/ s/#//g' \
@@ -289,13 +295,13 @@ telegraf()
     echo "done"
 
     if is_running telegraf; then
-        echo "Restarting telegraf to pick up changes..."
+        echo "BYO-NTP: restarting telegraf to pick up changes..."
         case "$(uname -s)" in
             FreeBSD|Linux) service telegraf restart ;;
             Darwin)  sudo port reload telegraf ;;
         esac
     else
-        echo "telegraf is not running."
+        echo "BYO-NTP: telegraf is not running."
     fi
 }
 

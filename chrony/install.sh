@@ -164,7 +164,7 @@ stop() {
 install_chrony_freebsd()
 {
     if [ ! -x "/usr/local/sbin/chronyd" ]; then
-        pkg install -y chrony
+        pkg install -y chrony-lite
     fi
 
     test -d /var/log/chrony || mkdir /var/log/chrony
@@ -236,11 +236,11 @@ telegraf()
     if [ ! -f "$TG_ETC_DIR/telegraf.conf" ]; then return; fi
 
     if grep -q '^\[\[inputs.chrony\]\]' "$TG_ETC_DIR/telegraf.conf"; then
-        # telegraf is already configured for chrony.
+        echo "BYO-NTP: telegraf is already configured for chrony."
         return
     fi
 
-    echo -n "Configuring Telegraf for chrony..."
+    echo -n "BYO-NTP: configuring telegraf for chrony..."
     sed -e '/^#\[\[inputs.chrony/ s/^#//' \
         -e '/:323/ s/#//g' \
         -e '/metrics.*sources/ s/#//g' \
@@ -253,13 +253,13 @@ telegraf()
     echo "done"
 
     if is_running telegraf; then
-        echo "Restarting Telegraf to pick up changes..."
+        echo "BYO-NTP: restarting telegraf to pick up changes..."
         case "$(uname -s)" in
             FreeBSD|Linux) service telegraf restart ;;
             Darwin)  sudo port reload telegraf ;;
         esac
     else
-        echo "Telegraf is not running."
+        echo "BYO-NTP: telegraf is not running."
     fi
 }
 

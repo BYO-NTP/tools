@@ -88,6 +88,7 @@ EOF
 
 configure()
 {
+    echo "BYO-NTP: generating config for NTPsec"
     conf_ntp_stats
     conf_ntp_servers
 
@@ -182,8 +183,24 @@ stop() {
 }
 
 install_debian_apt() {
+    echo "BYO-NTP: installing NTPsec"
     apt install -y ntpsec
     if is_running ntpd; then stop; fi
+}
+
+install_freebsd() {
+    echo "BYO-NTP: Installing NTPsec"
+    pkg install -y ntpsec
+
+    echo "BYO-NTP: Configuring NTPsec"
+    sysrc ntpd_program="/usr/local/sbin/ntpd"
+    sysrc ntpd_config="/usr/local/etc/ntp.conf"
+    sysrc ntpdate_config="/usr/local/etc/ntp.conf"
+
+    if ! id ntpd | grep -q dialer; then
+        echo "BYO-NTP: granting ntpd access to serial devices."
+        pw groupmod dialer -m ntpd
+    fi
 }
 
 install() {
@@ -203,17 +220,8 @@ install() {
                 *)                 install_debian_apt ;;
             esac
             ;;
-        FreeBSD)
-            pkg install -y ntpsec
-            sysrc ntpd_program="/usr/local/sbin/ntpd"
-            sysrc ntpd_config="/usr/local/etc/ntp.conf"
-            sysrc ntpdate_config="/usr/local/etc/ntp.conf"
-            # Grant ntpd access to serial devices by adding to the dialer group
-            id ntpd | grep -q dialer || pw groupmod dialer -m ntpd
-            ;;
-        Darwin)
-            port install ntpsec +refclock
-            ;;
+        FreeBSD) install_freebsd ;;
+        Darwin) port install ntpsec +refclock ;;
     esac
 }
 

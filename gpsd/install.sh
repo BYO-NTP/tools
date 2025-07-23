@@ -21,6 +21,10 @@ is_running()
 }
 
 install_freebsd() {
+    echo "BYO-NTP: installing gpsd."
+    pkg install -y gpsd-nox11
+
+    echo "BYO-NTP: configuring gpsd"
     sysrc gpsd_enable=YES
     case "$NTP_REFCLOCKS" in
         # add the target of gps0 for ntp's GPSD-NG driver
@@ -30,8 +34,11 @@ install_freebsd() {
     esac
     if [ -L "/dev/pps0" ]; then sysrc gpsd_devices+=" /dev/pps0"; fi
     sysrc gpsd_flags="--passive --speed 115200 --badtime --nowait"
-    pkg install -y gpsd-nox11
-    pw groupmod dialer -m nobody
+
+    if ! id nobody | grep -q dialer; then
+        echo "BYO-NTP: granting 'nobody' access to serial devices."
+        pw groupmod dialer -m nobody
+    fi
 
     if is_running gpsd; then
         service gpsd restart
@@ -41,12 +48,17 @@ install_freebsd() {
 }
 
 install_linux() {
+    echo "BYO-NTP: installing gpsd."
     apt install -y gpsd
+
+    echo -n "BYO-NTP: configuring gpsd..."
     sed -i \
         -e '/^DEVICES/ s|""|"/dev/gps0 /dev/pps0"|' \
         -e '/^USBAUTO/ s/true/false/' \
         -e '/^GPSD_OPTIONS/ s/=""/="--passive --badtime --nowait --speed 115200"/' \
         /etc/default/gpsd
+    echo " done."
+
     systemctl enable gpsd
     if is_running gpsd; then
         service gpsd restart
@@ -61,8 +73,10 @@ install_darwin() {
         exit 1
     fi
 
+    echo "BYO-NTP: installing gpsd."
     port install gpsd
 
+    echo "BYO-NTP: configuring gpsd."
     GPSD_PLIST="/Library/LaunchDaemons/org.macports.gpsd.plist"
     if [ -f "$GPSD_PLIST" ]; then
         echo "INFO: preserving $GPSD_PLIST"
@@ -75,6 +89,7 @@ install_darwin() {
         chmod 644 $GPSD_PLIST
     fi
 
+    echo "BYO-NTP: starting gpsd."
     port load gpsd
 }
 

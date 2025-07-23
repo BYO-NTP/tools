@@ -53,7 +53,7 @@ if service_exists; then
     if is_running gpsd; then
         echo "yes"
         stop_gpsd
-        echo 'BYO-NTP: ntpd stopped.'
+        echo 'BYO-NTP: gpsd stopped.'
     else
         echo "no"
     fi
