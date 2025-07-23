@@ -58,5 +58,19 @@ disable() {
     esac
 }
 
-if is_running; then stop; fi
-if service_exists; then disable; fi
+echo -n "BYO-NTP: does ntp service exist..."
+if service_exists; then
+    echo 'yes'
+    echo -n "BYO-NTP: is ntpd running..."
+    if is_running ntpd; then
+        echo 'yes'
+        stop
+        echo 'BYO-NTP: ntpd stopped.'
+    else
+        echo 'no'
+    fi
+    disable
+else
+    echo 'no'
+fi
+

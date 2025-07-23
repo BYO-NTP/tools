@@ -46,5 +46,18 @@ case "$(uname -s)" in
     ;;
 esac
 
-if is_running gpsd; then stop_gpsd; fi
-if service_exists; then disable; fi
+echo -n "BYO-NTP: does gpsd service exist..."
+if service_exists; then
+    echo "yes"
+    echo -n "BYO-NTP: is gpsd running..."
+    if is_running gpsd; then
+        echo "yes"
+        stop_gpsd
+        echo 'BYO-NTP: ntpd stopped.'
+    else
+        echo "no"
+    fi
+    disable
+else
+    echo "no"
+fi

@@ -47,7 +47,18 @@ case "$(uname -s)" in
     ;;
 esac
 
+echo -n "BYO-NTP: does ntpsec service exist..."
 if service_exists; then
-    if is_running ntpd; then stop; fi
+    echo 'yes'
+    echo -n "BYO-NTP: is ntpd running..."
+    if is_running ntpd; then
+        echo 'yes'
+        stop
+        echo 'BYO-NTP: ntpd stopped.'
+    else
+        echo 'no'
+    fi
     disable
+else
+    echo 'no'
 fi
