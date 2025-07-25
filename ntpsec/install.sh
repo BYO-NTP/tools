@@ -101,7 +101,7 @@ driftfile $NTP_DRIFTFILE
 leapfile $NTP_LEAPFILE
 $CONF_NTP_STATS
 
-tos maxclock 6 minclock 4 minsane 3 mindist 0.02
+tos maxclock 6 minclock 3 minsane 2 mindist 0.02
 
 $NTP_SERVERS
 
@@ -287,6 +287,13 @@ telegraf()
     fi
 }
 
+assure_offset() {
+    if [ -z "$GNSS_OFFSET_NMEA" ]; then
+        echo "ERR: GNSS_OFFSET_NMEA is not set."
+        exit 1
+    fi
+}
+
 case "$(uname -s)" in
     Darwin|FreeBSD|Linux) ;;
     *)  echo "ERR: Unsupported platform $(uname -s). Please file a feature request."
@@ -294,6 +301,7 @@ case "$(uname -s)" in
     ;;
 esac
 
+assure_offset
 set_platform_vars
 curl -sS https://byo-ntp.github.io/tools/chrony/disable.sh | sh
 curl -sS https://byo-ntp.github.io/tools/ntp/disable.sh | sh

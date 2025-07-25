@@ -70,11 +70,12 @@ which_log_file()
 which_log_file "$2"
 
 # finger friendly shortcuts
+# NTP drivers: .20=NMEA, .22=PPS, .28=SHM, .46=JSON
 PEER_FILTER="$1"
 case "$1" in
-    JSON|json) PEER_FILTER="JSON|127.127.46.0" ;;
-    NMEA|nmea) PEER_FILTER="NMEA|127.127.20" ;;
-    PPS|pps)   PEER_FILTER="PPS|127.127.22|127.127.46.128" ;;
+    JSON|json) PEER_FILTER="JSON|127.127.46." ;;
+    NMEA|nmea) PEER_FILTER="NMEA|127.127.(20|28.0|46.0)" ;;
+    PPS|pps)   PEER_FILTER="PPS|127.127.(22|28.2|46.128)" ;;
 esac
 
 echo "Calculating offset for $PEER_FILTER in $LOGFILE"

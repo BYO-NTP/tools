@@ -87,7 +87,6 @@ get_errata() {
     case "$(uname -s)" in
     Linux)
         CHRONY_ERRATA="$(cat <<EOLINUX
-minsamples 16
 keyfile /etc/chrony/chrony.keys
 driftfile /var/lib/chrony/chrony.drift
 dumpdir /var/lib/chrony
@@ -102,7 +101,6 @@ EOLINUX
         ;;
     FreeBSD)
         CHRONY_ERRATA="$(cat <<EOBSD
-minsamples 16
 driftfile /var/db/chrony/drift
 dumpdir /var/db/chrony
 ntsdumpdir /var/db/chrony
@@ -111,7 +109,6 @@ EOBSD
         ;;
     Darwin)
         CHRONY_ERRATA="$(cat <<EOMAC
-minsamples 16
 makestep 30 3
 driftfile /opt/local/var/run/chrony/drift
 dumpdir /opt/local/var/run/chrony
@@ -134,6 +131,7 @@ configure()
 $NTP_SERVERS
 
 # -------------------------------------------------------
+minsamples 32
 $NTP_REFCLOCKS
 # -------------------------------------------------------
 
@@ -263,6 +261,13 @@ telegraf()
     fi
 }
 
+assure_offset() {
+    if [ -z "$GNSS_OFFSET_NMEA" ]; then
+        echo "ERR: GNSS_OFFSET_NMEA is not set."
+        exit 1
+    fi
+}
+
 case "$(uname -s)" in
     Darwin|FreeBSD|Linux) ;;
     *)
@@ -271,6 +276,7 @@ case "$(uname -s)" in
     ;;
 esac
 
+assure_offset
 set_platform_vars
 curl -sS https://byo-ntp.github.io/tools/ntpsec/disable.sh | sh
 curl -sS https://byo-ntp.github.io/tools/ntp/disable.sh | sh
